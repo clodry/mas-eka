@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Страница не найдена — Мастерская ЕКА</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f19'/%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='none' stroke='%231d4a98' stroke-width='4'/%3E%3Ctext x='32' y='42' font-family='Arial, sans-serif' font-size='24' font-weight='bold' fill='%231d4a98' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .nf-wrap {
+    min-height: 78vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 140px 24px 80px;
+  }
+  .nf-box { max-width: 560px; text-align: center; }
+  .nf-code {
+    font-family: var(--font-huge);
+    font-size: clamp(96px, 18vw, 176px);
+    line-height: 1;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin: 0;
+  }
+  .nf-title {
+    font-family: var(--font-display);
+    font-size: clamp(22px, 3vw, 30px);
+    font-weight: 600;
+    margin: 8px 0 14px;
+    color: var(--text-primary);
+  }
+  .nf-text {
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0 0 32px;
+  }
+  .nf-actions {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .nf-path {
+    display: inline-block;
+    margin-top: 28px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+
+<header class="navbar">
+  <div class="wrap">
+    <a href="/" class="brand">
+      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+      <div class="brand-name">Мастерская ЕКА<small>строительная компания</small></div>
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="/#home">Главная</a>
+      <a href="/#about">О нас</a>
+      <a href="/blog">Блог</a>
+    </nav>
+    <button class="nav-toggle" id="navToggle" aria-label="Открыть меню">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="nf-wrap">
+    <div class="nf-box">
+      <p class="nf-code">404</p>
+      <h1 class="nf-title">Страница не найдена</h1>
+      <p class="nf-text">Похоже, такой страницы не существует, она была удалена, или в адресе есть опечатка.</p>
+      <div class="nf-actions">
+        <a href="/" class="btn btn-primary">На главную</a>
+        <a href="/blog" class="btn btn-ghost">Перейти в блог</a>
+      </div>
+      <span class="nf-path" id="nfPath"></span>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© <span id="nfYear"></span> Мастерская ЕКА</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('nfYear').textContent = new Date().getFullYear();
+  document.getElementById('nfPath').textContent = window.location.pathname;
+</script>
+<script src="/js/main.js"></script>
+</body>
+</html>
