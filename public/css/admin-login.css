@@ -1,0 +1,93 @@
+/* ===== Стили страницы входа (public/admin-login.html) =====
+   Это подмножество admin.css: только то, что нужно экрану логина, чтобы
+   неавторизованный посетитель не получал вместе со страницей вход разметку
+   и классы всей панели управления. */
+:root {
+  --bg-primary: #f4f6f8;
+  --bg-panel: #ffffff;
+  --bg-panel-raised: #eef1f4;
+  --line: rgba(20, 30, 25, 0.08);
+  --line-solid: #e2e6ea;
+  --accent: #1d4a98;
+  --accent-bright: #3862b8;
+  --accent-dim: #12336e;
+  --accent-deep: #eaf1ff;
+  --text-primary: #171a1c;
+  --text-muted: #5c6670;
+  --text-faint: #98a1a9;
+}
+
+.admin-body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.login-screen .btn {
+  border-radius: 10px;
+}
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line-solid);
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(20, 30, 25, 0.08);
+  padding: 40px 32px;
+}
+.login-card h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin: 0 0 6px;
+  display: flex;
+  justify-content: center;
+}
+.login-card .muted {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0 0 28px;
+  display: flex;
+  justify-content: center;
+}
+.login-card label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.login-card input[type="text"],
+.login-card input[type="password"] {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--line-solid);
+  color: var(--text-primary);
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14.5px;
+}
+.login-card input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.error-msg {
+  background: rgba(217, 68, 51, 0.08);
+  border: 1px solid #d94433;
+  color: #b13a2b;
+  font-size: 13.5px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+}

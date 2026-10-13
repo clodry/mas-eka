@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вход в панель — Мастерская ЕКА</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f19'/%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='none' stroke='%231d4a98' stroke-width='4'/%3E%3Ctext x='32' y='42' font-family='Arial, sans-serif' font-size='24' font-weight='bold' fill='%231d4a98' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/admin-login.css">
+</head>
+<body class="admin-body">
+
+<div id="loginScreen" class="login-screen">
+  <form id="loginForm" class="login-card">
+    <h1>Вход в панель</h1>
+    <p class="muted">Мастерская ЕКА</p>
+    <label>
+      <input type="text" name="login" placeholder="Логин" autocomplete="username" required>
+    </label>
+    <label>
+      <input type="password" name="password" placeholder="Пароль" autocomplete="current-password" required>
+    </label>
+    <div id="loginError" class="error-msg" hidden></div>
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Войти</button>
+  </form>
+</div>
+
+<script src="/js/admin-login.js"></script>
+</body>
+</html>

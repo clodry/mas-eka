@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Админ-панель — Мастерская ЕКА</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f19'/%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='none' stroke='%231d4a98' stroke-width='4'/%3E%3Ctext x='32' y='42' font-family='Arial, sans-serif' font-size='24' font-weight='bold' fill='%231d4a98' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-body">
+
+<div id="adminScreen" class="admin-screen" hidden>
+  <div class="dash-layout" id="dashLayout">
+
+    <aside class="dash-sidebar" id="dashSidebar">
+      <div class="dash-brand">
+        <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="73" height="28">
+        <span class="dash-brand-name dash-label-text">Мастерская ЕКА</span>
+        <button type="button" class="dash-collapse-btn" id="sidebarCollapseToggle" title="Свернуть меню" aria-label="Свернуть меню">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+        </button>
+      </div>
+
+      <nav class="dash-nav">
+        <div class="dash-nav-label dash-label-text">Меню</div>
+        <div class="dash-nav-group">
+          <button type="button" class="dash-nav-parent" id="dashboardsToggle" aria-expanded="true" title="Dashboards">
+            <span class="dash-nav-parent-left">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              <span class="dash-label-text">Dashboards</span>
+            </span>
+            <svg class="dash-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="dash-nav-children" id="dashboardsChildren">
+            <button type="button" class="dash-nav-child" data-page="new-post" title="Новый пост">
+              <span class="dash-dot"></span><span class="dash-label-text">Новый пост</span>
+            </button>
+            <button type="button" class="dash-nav-child active" data-page="posts" title="Посты">
+              <span class="dash-dot"></span><span class="dash-label-text">Посты</span>
+            </button>
+            <button type="button" class="dash-nav-child" data-page="authors" title="Авторы">
+              <span class="dash-dot"></span><span class="dash-label-text">Авторы</span>
+            </button>
+            <button type="button" class="dash-nav-child" data-page="site-settings" title="Настройки сайта">
+              <span class="dash-dot"></span><span class="dash-label-text">Настройки сайта</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div class="dash-sidebar-footer">
+        <a href="/blog" class="dash-side-link" target="_blank" title="Открыть блог">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <span class="dash-label-text">Открыть блог ↗</span>
+        </a>
+        <button id="logoutBtn" class="dash-side-link dash-side-link-danger" type="button" title="Выйти">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="dash-label-text">Выйти</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="dash-main">
+      <header class="dash-topbar">
+        <button type="button" class="dash-burger" id="sidebarToggle" aria-label="Меню">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="dash-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="postSearch" placeholder="Поиск по постам...">
+        </div>
+        <div class="dash-topbar-right">
+          <span class="dash-user-badge">Админ</span>
+        </div>
+      </header>
+
+      <div class="dash-content">
+
+        <section id="page-posts" class="dash-page">
+          <h1 class="dash-page-title">Посты</h1>
+
+          <div class="stat-cards" id="statCards"></div>
+
+          <div class="analytics-grid">
+            <div class="admin-panel analytics-chart-panel">
+              <div class="panel-head">
+                <h2>Посещения сайта за 7 дней</h2>
+                <span class="muted" id="analyticsUniqueVisitors"></span>
+              </div>
+              <div id="analyticsChart" class="analytics-chart"></div>
+            </div>
+            <div class="admin-panel analytics-top-panel">
+              <div class="panel-head"><h2>Популярные посты</h2></div>
+              <div id="analyticsTopPosts" class="analytics-top-posts"></div>
+            </div>
+          </div>
+
+          <div class="admin-list">
+            <div class="panel-head"><h2>Все посты</h2></div>
+            <div id="postsList" class="posts-table"></div>
+          </div>
+        </section>
+
+        <section id="page-new-post" class="dash-page" hidden>
+          <h1 class="dash-page-title" id="formTitle">Новый пост</h1>
+
+          <div class="admin-panel">
+            <div class="panel-head">
+              <span></span>
+              <button id="resetFormBtn" class="btn btn-ghost" type="button" hidden>Отменить редактирование</button>
+            </div>
+            <form id="postForm" class="post-form">
+              <input type="hidden" name="id" value="">
+              <label>Заголовок
+                <input type="text" name="title" required maxlength="180" placeholder="Например: Как мы выбираем материалы для фундамента">
+              </label>
+
+              <label>
+                Адрес страницы (ЧПУ)
+                <div class="slug-field">
+                  <span class="slug-prefix" id="slugPrefix">/blog/</span>
+                  <input type="text" name="slug" id="slugInput" maxlength="200" placeholder="avtomaticheski-iz-zagolovka">
+                </div>
+                <span class="blocks-hint">Формируется автоматически из заголовка. Можно изменить вручную — сохранятся только латиница, цифры и дефис.</span>
+              </label>
+
+              <label>Анонс (кратко для карточки блога)
+                <textarea name="excerpt" rows="2" required maxlength="240" placeholder="1-2 предложения для превью"></textarea>
+              </label>
+              <label>Теги (через запятую)
+                <input type="text" name="tags" list="tagSuggestions" maxlength="200" placeholder="Кровля, Фундамент, Чек-листы">
+                <datalist id="tagSuggestions"></datalist>
+              </label>
+
+              <h2 class="settings-subhead">Экспертность (E-E-A-T)</h2>
+              <div class="author-field">
+                <label>Автор статьи
+                  <select name="authorId" id="authorSelect"></select>
+                </label>
+                <a href="#" id="authorProfileLink" class="author-profile-link" target="_blank" rel="noopener" hidden>Мини-профиль автора ↗</a>
+                <span class="blocks-hint">Поисковики доверяют статьям с реальным подтверждённым автором. Управлять списком авторов — в разделе «Авторы».</span>
+              </div>
+
+              <h2 class="settings-subhead">SEO страницы</h2>
+              <label>Title (заголовок в поисковой выдаче и вкладке браузера)
+                <input type="text" name="seoTitle" maxlength="70" placeholder="Если не заполнено — используется заголовок статьи">
+              </label>
+              <label>Description (описание для поисковиков и соцсетей)
+                <textarea name="seoDescription" rows="2" maxlength="200" placeholder="Если не заполнено — используется анонс статьи"></textarea>
+              </label>
+              <label>H1 (заголовок на самой странице)
+                <input type="text" name="h1" maxlength="150" placeholder="Если не заполнено — используется заголовок статьи">
+              </label>
+
+              <div class="preview-field">
+                <div class="blocks-field-head">
+                  <span>Превью карточки</span>
+                  <span class="blocks-hint">Необязательно. Если не выбрать фото здесь, будет использовано первое фото из статьи — либо нажмите «Добавить как превью» на любом фото ниже, и оно скопируется сюда.</span>
+                </div>
+                <div id="previewBox" class="preview-box"></div>
+              </div>
+
+              <div class="blocks-field">
+                <div class="blocks-field-head">
+                  <span>Текст статьи</span>
+                  <span class="blocks-hint">Стройте статью из абзацев и фото в любом порядке.</span>
+                </div>
+                <div id="blocksEditor" class="blocks-editor"></div>
+                <div class="blocks-add-row">
+                  <button type="button" id="addParagraphBtn" class="btn btn-ghost">+ Абзац текста</button>
+                  <button type="button" id="addImageBtn" class="btn btn-ghost">+ Фото</button>
+                </div>
+              </div>
+
+              <div id="formError" class="error-msg" hidden></div>
+              <div class="form-actions">
+                <button type="button" id="previewPostBtn" class="btn btn-ghost">Превью поста</button>
+                <button type="submit" name="statusAction" value="draft" class="btn btn-ghost">Черновик</button>
+                <button type="button" id="openScheduleModalBtn" class="btn btn-ghost">Отложенная публикация</button>
+                <button type="submit" name="statusAction" value="published" class="btn btn-primary">Опубликовать</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section id="page-authors" class="dash-page" hidden>
+          <h1 class="dash-page-title">Авторы</h1>
+
+          <div class="admin-panel">
+            <div class="panel-head">
+              <span id="authorFormTitle">Новый автор</span>
+              <button id="resetAuthorFormBtn" class="btn btn-ghost" type="button" hidden>Отменить редактирование</button>
+            </div>
+            <form id="authorForm" class="post-form">
+              <input type="hidden" name="id" value="">
+              <label>Имя автора
+                <input type="text" name="name" id="authorNameInput" required maxlength="120" placeholder="Например: Иван Петров">
+              </label>
+              <label>
+                Адрес мини-профиля
+                <div class="slug-field">
+                  <span class="slug-prefix">/author/</span>
+                  <input type="text" name="slug" id="authorSlugInput" maxlength="200" placeholder="avtomaticheski-iz-imeni">
+                </div>
+              </label>
+              <label>Роль / квалификация
+                <input type="text" name="role" maxlength="120" placeholder="Например: Прораб, 12 лет в профессии">
+              </label>
+              <label>О себе (для мини-профиля)
+                <textarea name="bio" rows="3" maxlength="600" placeholder="Опыт, специализация, за что отвечает на объекте"></textarea>
+              </label>
+              <label>Ссылка-подтверждение (соцсеть, профиль на профильном ресурсе)
+                <input type="url" name="socialUrl" maxlength="300" placeholder="https://...">
+                <span class="blocks-hint">Необязательно, но повышает доверие поисковиков: реальная ссылка на автора вне сайта.</span>
+              </label>
+              <div class="preview-field">
+                <div class="blocks-field-head">
+                  <span>Фото автора</span>
+                </div>
+                <div id="authorPhotoBox" class="preview-box"></div>
+              </div>
+              <div id="authorFormError" class="error-msg" hidden></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Сохранить автора</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-list">
+            <div class="panel-head"><h2>Все авторы</h2></div>
+            <div id="authorsList" class="posts-table"></div>
+          </div>
+        </section>
+
+        <section id="page-site-settings" class="dash-page" hidden>
+          <h1 class="dash-page-title">Настройки сайта</h1>
+
+          <div class="admin-panel">
+            <form id="siteContentForm" class="post-form">
+
+              <h2 class="settings-subhead">Герой (первый экран)</h2>
+              <label>Надпись над заголовком
+                <input type="text" name="heroEyebrow" maxlength="80">
+              </label>
+              <div class="form-grid-3">
+                <label>Заголовок — строка 1
+                  <input type="text" name="heroLine1" maxlength="60">
+                </label>
+                <label>Заголовок — строка 2 (акцент)
+                  <input type="text" name="heroLine2" maxlength="60">
+                </label>
+                <label>Заголовок — строка 3
+                  <input type="text" name="heroLine3" maxlength="60">
+                </label>
+              </div>
+              <label>Подзаголовок
+                <textarea name="heroLead" rows="2" maxlength="300"></textarea>
+              </label>
+              <div class="preview-field">
+                <div class="blocks-field-head">
+                  <span>Фон первого экрана</span>
+                  <span class="blocks-hint">Фотография на всю ширину первого экрана главной. Нужен горизонтальный снимок, минимум 1920&nbsp;px по ширине; текст ложится в левый нижний угол, поэтому главное в кадре лучше держать справа и сверху.</span>
+                </div>
+                <div id="heroPhotoBox" class="preview-box"></div>
+              </div>
+              <label>Alt-текст фона (для доступности и SEO)
+                <input type="text" name="heroPhotoAlt" maxlength="120" placeholder="Например: Набережная Невы в Санкт-Петербурге">
+              </label>
+
+              <h2 class="settings-subhead">О нас</h2>
+              <label>Надпись-метка
+                <input type="text" name="aboutEyebrow" maxlength="60">
+              </label>
+              <label>Заголовок секции
+                <input type="text" name="aboutTitle" maxlength="120">
+              </label>
+              <label>Краткое описание под заголовком
+                <textarea name="aboutDesc" rows="2" maxlength="300"></textarea>
+              </label>
+              <label>Абзац 1
+                <textarea name="aboutP1" rows="3" maxlength="400"></textarea>
+              </label>
+              <label>Абзац 2
+                <textarea name="aboutP2" rows="3" maxlength="400"></textarea>
+              </label>
+
+              <div class="settings-subhead-row">
+                <h2 class="settings-subhead">Статистика (плитки с цифрами)</h2>
+                <button type="button" id="addStatBtn" class="btn-mini">+ Добавить</button>
+              </div>
+              <div id="statsEditor" class="repeat-editor"></div>
+
+              <div class="settings-subhead-row">
+                <h2 class="settings-subhead">Ценности / преимущества</h2>
+                <button type="button" id="addValueBtn" class="btn-mini">+ Добавить</button>
+              </div>
+              <div id="valuesEditor" class="repeat-editor"></div>
+
+              <h2 class="settings-subhead">Контакты (футер)</h2>
+              <label>Короткое описание компании
+                <input type="text" name="contactsTagline" maxlength="200">
+              </label>
+              <div class="form-grid-2">
+                <label>Телефон
+                  <input type="text" name="contactsPhone" maxlength="40" placeholder="+7 (000) 000-00-00">
+                </label>
+                <label>Email
+                  <input type="email" name="contactsEmail" maxlength="120">
+                </label>
+              </div>
+              <label>Адрес
+                <input type="text" name="contactsAddress" maxlength="200">
+              </label>
+
+              <h2 class="settings-subhead">SEO — главная страница</h2>
+              <label>Title
+                <input type="text" name="seoHomeTitle" maxlength="70">
+              </label>
+              <label>Description
+                <textarea name="seoHomeDescription" rows="2" maxlength="200"></textarea>
+              </label>
+
+              <h2 class="settings-subhead">SEO — страница блога</h2>
+              <label>Title
+                <input type="text" name="seoBlogTitle" maxlength="70">
+              </label>
+              <label>Description
+                <textarea name="seoBlogDescription" rows="2" maxlength="200"></textarea>
+              </label>
+              <label>H1
+                <input type="text" name="seoBlogH1" maxlength="150">
+              </label>
+
+              <h2 class="settings-subhead">Счётчики и вебмастер</h2>
+              <label>
+                Яндекс.Метрика — код счётчика
+                <textarea name="analyticsYandexMetrika" rows="5" maxlength="6000" spellcheck="false" class="mono-textarea" placeholder="Вставьте сюда весь код счётчика целиком из личного кабинета Яндекс.Метрики (со тегом &lt;script&gt;)"></textarea>
+                <span class="blocks-hint">Скопируйте готовый веб-код счётчика в Яндекс.Метрике (раздел «Настройка» → «Счётчики» → ваш счётчик → «Код счётчика») и вставьте его сюда целиком.</span>
+              </label>
+              <label>
+                Google Analytics — код счётчика
+                <textarea name="analyticsGoogleAnalytics" rows="5" maxlength="6000" spellcheck="false" class="mono-textarea" placeholder="Вставьте сюда код тега Google Analytics (Global Site Tag / gtag.js)"></textarea>
+                <span class="blocks-hint">Скопируйте фрагмент кода из Google Analytics («Администратор» → «Потоки данных» → ваш поток → «Инструкции по установке тега») и вставьте сюда целиком.</span>
+              </label>
+              <div class="form-grid-2">
+                <label>
+                  Яндекс.Вебмастер — подтверждение прав
+                  <input type="text" name="analyticsYandexVerification" maxlength="200" placeholder="Только код из мета-тега, например: a1b2c3d4e5f6g7h8">
+                </label>
+                <label>
+                  Google Search Console — подтверждение прав
+                  <input type="text" name="analyticsGoogleVerification" maxlength="200" placeholder="Только код из мета-тега">
+                </label>
+              </div>
+              <span class="blocks-hint">В Яндекс.Вебмастере/Google Search Console выберите способ подтверждения «HTML-тег» и скопируйте сюда только значение атрибута content из выданного мета-тега (не весь тег) — он подставится в &lt;head&gt; всех страниц автоматически.</span>
+
+              <h2 class="settings-subhead">Служебные файлы</h2>
+              <label>
+                sitemap.xml
+                <span class="blocks-hint">Генерируется автоматически со всеми страницами и статьями блога — <a href="/sitemap.xml" target="_blank" rel="noopener">открыть файл</a>.</span>
+              </label>
+              <label>robots.txt
+                <textarea name="seoRobotsTxt" id="robotsTxtInput" rows="6" maxlength="4000" spellcheck="false" class="mono-textarea"></textarea>
+                <span class="blocks-hint">Строка Sitemap добавляется в конец файла автоматически — её можно не писать здесь. Файл доступен по адресу <a href="/robots.txt" target="_blank" rel="noopener">/robots.txt</a>.</span>
+              </label>
+
+              <div id="siteContentError" class="error-msg" hidden></div>
+              <div id="siteContentSuccess" class="success-msg" hidden>Настройки сохранены</div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Сохранить настройки</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="previewModal" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>Предпросмотр поста</span>
+      <button type="button" id="closePreviewBtn" class="icon-btn" title="Закрыть">&#10006;</button>
+    </div>
+    <div class="modal-body">
+      <article class="preview-article" id="previewArticle"></article>
+    </div>
+  </div>
+</div>
+
+<div id="scheduleModal" class="modal-overlay" hidden>
+  <div class="modal-box modal-box-narrow">
+    <div class="modal-head">
+      <span>Отложенная публикация</span>
+      <button type="button" id="closeScheduleModalBtn" class="icon-btn" title="Закрыть">&#10006;</button>
+    </div>
+    <div class="modal-body">
+      <label class="schedule-modal-field">
+        Дата и время публикации
+        <input type="datetime-local" id="publishedAtInput">
+      </label>
+      <div id="scheduleModalError" class="error-msg" hidden></div>
+      <div class="form-actions">
+        <button type="button" id="cancelScheduleBtn" class="btn btn-ghost">Отмена</button>
+        <button type="button" id="confirmScheduleBtn" class="btn btn-primary">Запланировать</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>
