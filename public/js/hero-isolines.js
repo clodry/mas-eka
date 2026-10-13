@@ -27,18 +27,27 @@
     const b = parseInt(hex.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
-  const LINE_ALPHA = 0.32;
-  const LINE_WIDTH = 1.1;
+  // Обычные («второстепенные») изолинии — тонкие и бледные. Каждая
+  // INDEX_EVERY-я — «утолщённая» опорная линия, как на бумажных топокартах,
+  // где каждая пятая горизонталь жирнее остальных и подписывается высотой.
+  const LINE_ALPHA = 0.28;
+  const LINE_WIDTH = 1.0;
+  const INDEX_EVERY = 4;
+  const INDEX_LINE_ALPHA = 0.62;
+  const INDEX_LINE_WIDTH = 2.0;
 
   // Шаг сетки по X/Y в CSS-пикселях — компромисс между гладкостью контуров
   // и скоростью пересчёта marching squares на каждом кадре.
-  const CELL = 16;
+  const CELL = 14;
   // Число уровней (изолиний) по высоте поля шума; поле нормировано примерно
   // в диапазон [-1.2, 1.2], уровни распределены равномерно по нему.
   const LEVEL_COUNT = 13;
   const LEVEL_MIN = -1.15;
   const LEVEL_MAX = 1.15;
   const LEVELS = Array.from({ length: LEVEL_COUNT }, (_, k) => LEVEL_MIN + ((LEVEL_MAX - LEVEL_MIN) * k) / (LEVEL_COUNT - 1));
+  // Середина списка уровней считается «нулевой» горизонталью — от неё
+  // отсчитываем опорные линии в обе стороны, как от уровня моря на карте.
+  const INDEX_OFFSET = Math.floor(LEVEL_COUNT / 2) % INDEX_EVERY;
 
   let width = 0;
   let height = 0;
@@ -93,8 +102,11 @@
   // Курсор продавливает поле локальным «бугром» — рядом с ним контуры
   // стягиваются в дополнительную петлю, как будто в ткань карты воткнули
   // палец. Чисто декоративный эффект, не привязан к реальной высоте.
-  const BUMP_RADIUS = 190;
-  const BUMP_STRENGTH = 0.9;
+  // Чуть шире и мягче прежнего: резкий узкий бугор заставлял линии рядом
+  // с курсором внезапно смыкаться/распадаться между соседними ячейками
+  // сетки (видно как «скачок» формы), а не плавно утекать за курсором.
+  const BUMP_RADIUS = 210;
+  const BUMP_STRENGTH = 0.62;
   function bumpAt(x, y) {
     if (!hasPointer) return 0;
     const dx = x - smoothX;
@@ -102,7 +114,7 @@
     const distSq = dx * dx + dy * dy;
     const r = BUMP_RADIUS;
     if (distSq > r * r * 4) return 0;
-    return BUMP_STRENGTH * Math.exp(-distSq / (2 * (r / 2.2) ** 2));
+    return BUMP_STRENGTH * Math.exp(-distSq / (2 * (r / 1.8) ** 2));
   }
 
   function resize() {
@@ -287,35 +299,63 @@
 
   // Рисует все изолинии одного уровня одним path (один stroke на уровень
   // вместо одного на цепочку — ощутимо дешевле при сотнях петель).
-  function drawLevel(level, color) {
+  function drawLevel(level, color, lineWidth) {
     const polylines = stitchPolylines(collectSegments(level));
     ctx.beginPath();
     for (const pts of polylines) strokeSmoothPolyline(pts);
     ctx.strokeStyle = color;
-    ctx.lineWidth = LINE_WIDTH;
+    ctx.lineWidth = lineWidth;
     ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.stroke();
   }
 
   function drawFrame(time) {
-    if (!prefersReducedMotion) {
-      smoothX += (pointerX - smoothX) * 0.12;
-      smoothY += (pointerY - smoothY) * 0.12;
-    }
     ctx.clearRect(0, 0, width, height);
     buildField(time);
-    const color = accentRgba(LINE_ALPHA);
-    for (const level of LEVELS) drawLevel(level, color);
+    const minorColor = accentRgba(LINE_ALPHA);
+    const indexColor = accentRgba(INDEX_LINE_ALPHA);
+    // Второстепенные линии рисуются первыми, опорные — поверх них, чтобы
+    // утолщённый штрих не перекрывался тонкими соседними линиями.
+    LEVELS.forEach((level, k) => {
+      if ((k + INDEX_OFFSET) % INDEX_EVERY === 0) return;
+      drawLevel(level, minorColor, LINE_WIDTH);
+    });
+    LEVELS.forEach((level, k) => {
+      if ((k + INDEX_OFFSET) % INDEX_EVERY !== 0) return;
+      drawLevel(level, indexColor, INDEX_LINE_WIDTH);
+    });
   }
 
   let rafId = null;
   let lastDrawTime = 0;
-  // 24 кадра/с достаточно для плавного «дрейфа» и заметно дешевле по CPU,
-  // чем пересчитывать marching squares по всей сетке 60 раз в секунду.
-  const FRAME_INTERVAL = 1000 / 24;
+  let lastTickTime = 0;
+  // 30 кадров/с для пересчёта marching squares — дешевле, чем 60 раз в
+  // секунду гонять сетку по всему экрану, и всё ещё выглядит гладко.
+  const FRAME_INTERVAL = 1000 / 30;
+  // Постоянная времени сглаживания курсора в миллисекундах: решает, за
+  // сколько «бугор» догоняет новую позицию курсора.
+  const POINTER_SMOOTH_MS = 90;
+
+  // Сглаживание курсора считается КАЖДЫЙ тик rAF (а не только когда рисуем
+  // кадр) и зависит от реально прошедшего времени (dt), а не от номера
+  // кадра. Раньше шаг сглаживания 0.12 применялся только в те кадры, где
+  // проходила отрисовка (раз в FRAME_INTERVAL) — при просадках FPS или
+  // редких событиях pointermove «бугор» дёргался вместо плавного следования
+  // за курсором. Экспоненциальное сглаживание с постоянной времени даёт
+  // одинаковую на вид скорость движения независимо от частоты кадров.
+  function tickPointer(dt) {
+    if (prefersReducedMotion || !hasPointer) return;
+    const k = 1 - Math.exp(-dt / POINTER_SMOOTH_MS);
+    smoothX += (pointerX - smoothX) * k;
+    smoothY += (pointerY - smoothY) * k;
+  }
 
   function loop(time) {
     rafId = requestAnimationFrame(loop);
+    const dt = lastTickTime ? time - lastTickTime : 16.7;
+    lastTickTime = time;
+    tickPointer(dt);
     if (time - lastDrawTime < FRAME_INTERVAL) return;
     lastDrawTime = time;
     drawFrame(time);
