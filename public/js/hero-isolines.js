@@ -170,10 +170,19 @@
     return [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
   }
 
-  // Рисует все изолинии одного уровня одним path (один stroke на уровень
-  // вместо одного на отрезок — ощутимо дешевле при сотнях ячеек).
-  function drawLevel(level, color) {
-    ctx.beginPath();
+  // Ключ точки для склейки отрезков в цепочки: соседние ячейки сетки
+  // интерполируют одну и ту же граничную точку из одних и тех же значений
+  // в узлах, так что совпадение получается с точностью до float — десятых
+  // пикселя как ключа более чем достаточно, чтобы не расклеить линию из-за
+  // погрешности округления.
+  function pointKey(p) {
+    return Math.round(p[0] * 8) + '_' + Math.round(p[1] * 8);
+  }
+
+  // Собирает «сырые» отрезки одного уровня марширующими квадратами —
+  // без отрисовки, чтобы потом склеить их в непрерывные цепочки.
+  function collectSegments(level) {
+    const segments = [];
     const stride = cols + 1;
     for (let j = 0; j < rows; j++) {
       const y0 = j * cellH;
@@ -193,9 +202,7 @@
         const segs = CASE_EDGES[caseIdx];
         if (!segs.length) continue;
 
-        const corners = {
-          TL: [x0, y0], TR: [x1, y0], BR: [x1, y1], BL: [x0, y1]
-        };
+        const corners = { TL: [x0, y0], TR: [x1, y0], BR: [x1, y1], BL: [x0, y1] };
         const edgePoint = (name) => {
           switch (name) {
             case 'N': return lerpEdge(level, a, b, corners.TL, corners.TR);
@@ -206,16 +213,87 @@
           }
         };
 
-        for (const [e1, e2] of segs) {
-          const p1 = edgePoint(e1);
-          const p2 = edgePoint(e2);
-          ctx.moveTo(p1[0], p1[1]);
-          ctx.lineTo(p2[0], p2[1]);
-        }
+        for (const [e1, e2] of segs) segments.push([edgePoint(e1), edgePoint(e2)]);
       }
     }
+    return segments;
+  }
+
+  // Склеивает разрозненные отрезки одного уровня в непрерывные цепочки
+  // точек (замкнутые петли или оборванные на краю канваса) — без этого
+  // каждый отрезок рисовался бы отдельным прямым звеном, и на поворотах
+  // был виден «многогранник» вместо гладкой кривой.
+  function stitchPolylines(segments) {
+    const byPoint = new Map();
+    const addRef = (key, ref) => {
+      let list = byPoint.get(key);
+      if (!list) { list = []; byPoint.set(key, list); }
+      list.push(ref);
+    };
+    segments.forEach((seg, s) => {
+      addRef(pointKey(seg[0]), { s, end: 0 });
+      addRef(pointKey(seg[1]), { s, end: 1 });
+    });
+
+    const used = new Array(segments.length).fill(false);
+    const polylines = [];
+
+    const extend = (chain, fromEnd) => {
+      for (;;) {
+        const tip = fromEnd === 'end' ? chain[chain.length - 1] : chain[0];
+        const candidates = byPoint.get(pointKey(tip));
+        if (!candidates) return;
+        const next = candidates.find((c) => !used[c.s]);
+        if (!next) return;
+        used[next.s] = true;
+        const seg = segments[next.s];
+        const otherPoint = next.end === 0 ? seg[1] : seg[0];
+        if (fromEnd === 'end') chain.push(otherPoint);
+        else chain.unshift(otherPoint);
+      }
+    };
+
+    for (let s = 0; s < segments.length; s++) {
+      if (used[s]) continue;
+      used[s] = true;
+      const chain = [segments[s][0], segments[s][1]];
+      extend(chain, 'end');
+      extend(chain, 'start');
+      polylines.push(chain);
+    }
+    return polylines;
+  }
+
+  // Сглаженная кривая через узлы цепочки — проводит кривую через середины
+  // соседних отрезков (дешёвый аналог catmull-rom), так что заметных
+  // изломов на стыках ячеек сетки не остаётся.
+  function strokeSmoothPolyline(pts) {
+    if (pts.length < 2) return;
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    if (pts.length === 2) {
+      ctx.lineTo(pts[1][0], pts[1][1]);
+      return;
+    }
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [cx, cy] = pts[i];
+      const [nx, ny] = pts[i + 1];
+      const mx = (cx + nx) / 2;
+      const my = (cy + ny) / 2;
+      ctx.quadraticCurveTo(cx, cy, mx, my);
+    }
+    const last = pts[pts.length - 1];
+    ctx.lineTo(last[0], last[1]);
+  }
+
+  // Рисует все изолинии одного уровня одним path (один stroke на уровень
+  // вместо одного на цепочку — ощутимо дешевле при сотнях петель).
+  function drawLevel(level, color) {
+    const polylines = stitchPolylines(collectSegments(level));
+    ctx.beginPath();
+    for (const pts of polylines) strokeSmoothPolyline(pts);
     ctx.strokeStyle = color;
     ctx.lineWidth = LINE_WIDTH;
+    ctx.lineJoin = 'round';
     ctx.stroke();
   }
 
