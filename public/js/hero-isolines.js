@@ -67,11 +67,15 @@
   let hasPointer = false;
 
   // ===== Поле шума (value noise, 2 октавы) =====
-  // Детерминированный псевдослучайный хэш узла решётки — без таблиц
-  // перестановок, достаточно для «визуального» шума на фоне.
+  // Детерминированный псевдослучайный хэш узла решётки — целочисленный
+  // битовый хэш вместо Math.sin(): тригонометрия на CPU заметно дороже,
+  // а buildField дергает хэш по 4 раза на узел сетки на каждый кадр —
+  // при полном экране это сотни тысяч вызовов в секунду.
   function hashNode(ix, iy) {
-    const s = Math.sin(ix * 127.1 + iy * 311.7 + 17.23) * 43758.5453123;
-    return s - Math.floor(s); // 0..1
+    let h = (Math.imul(ix, 374761393) ^ Math.imul(iy, 668265263)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    h = (h ^ (h >>> 16)) >>> 0;
+    return h / 4294967296; // 0..1
   }
   function smoothstep5(t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
@@ -176,10 +180,10 @@
     []
   ];
 
-  function lerpEdge(level, v1, v2, p1, p2) {
+  function lerpEdge(level, v1, v2, x1, y1, x2, y2) {
     const denom = v2 - v1;
     const t = Math.abs(denom) < 1e-6 ? 0.5 : (level - v1) / denom;
-    return [p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t];
+    return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
   }
 
   // Ключ точки для склейки отрезков в цепочки: соседние ячейки сетки
@@ -191,10 +195,21 @@
     return Math.round(p[0] * 8) + '_' + Math.round(p[1] * 8);
   }
 
-  // Собирает «сырые» отрезки одного уровня марширующими квадратами —
-  // без отрисовки, чтобы потом склеить их в непрерывные цепочки.
-  function collectSegments(level) {
-    const segments = [];
+  // Буферы отрезков по уровням — один раз выделены и переиспользуются
+  // каждый кадр (просто обнуляем .length), чтобы не грузить сборщик мусора
+  // десятками тысяч коротких массивов в секунду.
+  const levelSegments = LEVELS.map(() => []);
+
+  // Раньше это была отдельная функция collectSegments(level), которую
+  // вызывали 13 раз — по разу на каждый уровень, каждый раз заново обходя
+  // ВСЮ сетку ячеек. Здесь сетка обходится один раз: значения в углах
+  // ячейки (a,b,c,d) читаются из поля один раз, после чего по ним сразу
+  // определяется диапазон [min,max] этой ячейки, и перебираются только те
+  // уровни, что реально через неё проходят (обычно 1-2 из 13, а не все 13) —
+  // кратное сокращение числа операций на кадр.
+  function collectAllLevels() {
+    for (let L = 0; L < LEVEL_COUNT; L++) levelSegments[L].length = 0;
+
     const stride = cols + 1;
     for (let j = 0; j < rows; j++) {
       const y0 = j * cellH;
@@ -210,25 +225,37 @@
         const c = field[rowBottom + i + 1]; // BR
         const d = field[rowBottom + i];    // BL
 
-        const caseIdx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
-        const segs = CASE_EDGES[caseIdx];
-        if (!segs.length) continue;
+        let minV = a, maxV = a;
+        if (b < minV) minV = b; else if (b > maxV) maxV = b;
+        if (c < minV) minV = c; else if (c > maxV) maxV = c;
+        if (d < minV) minV = d; else if (d > maxV) maxV = d;
 
-        const corners = { TL: [x0, y0], TR: [x1, y0], BR: [x1, y1], BL: [x0, y1] };
-        const edgePoint = (name) => {
-          switch (name) {
-            case 'N': return lerpEdge(level, a, b, corners.TL, corners.TR);
-            case 'E': return lerpEdge(level, b, c, corners.TR, corners.BR);
-            case 'S': return lerpEdge(level, d, c, corners.BL, corners.BR);
-            case 'W': return lerpEdge(level, a, d, corners.TL, corners.BL);
-            default: return corners.TL;
+        for (let L = 0; L < LEVEL_COUNT; L++) {
+          const level = LEVELS[L];
+          if (level < minV) continue;
+          if (level > maxV) break; // LEVELS отсортирован по возрастанию
+
+          const caseIdx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+          const segs = CASE_EDGES[caseIdx];
+          if (!segs.length) continue;
+
+          const bucket = levelSegments[L];
+          for (const [e1, e2] of segs) {
+            bucket.push([edgePointAt(level, e1, a, b, c, d, x0, y0, x1, y1), edgePointAt(level, e2, a, b, c, d, x0, y0, x1, y1)]);
           }
-        };
-
-        for (const [e1, e2] of segs) segments.push([edgePoint(e1), edgePoint(e2)]);
+        }
       }
     }
-    return segments;
+  }
+
+  function edgePointAt(level, name, a, b, c, d, x0, y0, x1, y1) {
+    switch (name) {
+      case 'N': return lerpEdge(level, a, b, x0, y0, x1, y0);
+      case 'E': return lerpEdge(level, b, c, x1, y0, x1, y1);
+      case 'S': return lerpEdge(level, d, c, x0, y1, x1, y1);
+      case 'W': return lerpEdge(level, a, d, x0, y0, x0, y1);
+      default: return [x0, y0];
+    }
   }
 
   // Склеивает разрозненные отрезки одного уровня в непрерывные цепочки
@@ -297,10 +324,11 @@
     ctx.lineTo(last[0], last[1]);
   }
 
-  // Рисует все изолинии одного уровня одним path (один stroke на уровень
-  // вместо одного на цепочку — ощутимо дешевле при сотнях петель).
-  function drawLevel(level, color, lineWidth) {
-    const polylines = stitchPolylines(collectSegments(level));
+  // Рисует уже собранные отрезки одного уровня одним path (один stroke на
+  // уровень вместо одного на цепочку — ощутимо дешевле при сотнях петель).
+  function drawLevelSegments(segments, color, lineWidth) {
+    if (!segments.length) return;
+    const polylines = stitchPolylines(segments);
     ctx.beginPath();
     for (const pts of polylines) strokeSmoothPolyline(pts);
     ctx.strokeStyle = color;
@@ -313,37 +341,38 @@
   function drawFrame(time) {
     ctx.clearRect(0, 0, width, height);
     buildField(time);
+    collectAllLevels(); // один проход по сетке на все 13 уровней сразу
     const minorColor = accentRgba(LINE_ALPHA);
     const indexColor = accentRgba(INDEX_LINE_ALPHA);
     // Второстепенные линии рисуются первыми, опорные — поверх них, чтобы
     // утолщённый штрих не перекрывался тонкими соседними линиями.
-    LEVELS.forEach((level, k) => {
-      if ((k + INDEX_OFFSET) % INDEX_EVERY === 0) return;
-      drawLevel(level, minorColor, LINE_WIDTH);
-    });
-    LEVELS.forEach((level, k) => {
-      if ((k + INDEX_OFFSET) % INDEX_EVERY !== 0) return;
-      drawLevel(level, indexColor, INDEX_LINE_WIDTH);
-    });
+    for (let L = 0; L < LEVEL_COUNT; L++) {
+      if ((L + INDEX_OFFSET) % INDEX_EVERY === 0) continue;
+      drawLevelSegments(levelSegments[L], minorColor, LINE_WIDTH);
+    }
+    for (let L = 0; L < LEVEL_COUNT; L++) {
+      if ((L + INDEX_OFFSET) % INDEX_EVERY !== 0) continue;
+      drawLevelSegments(levelSegments[L], indexColor, INDEX_LINE_WIDTH);
+    }
   }
 
   let rafId = null;
-  let lastDrawTime = 0;
   let lastTickTime = 0;
-  // 30 кадров/с для пересчёта marching squares — дешевле, чем 60 раз в
-  // секунду гонять сетку по всему экрану, и всё ещё выглядит гладко.
-  const FRAME_INTERVAL = 1000 / 30;
-  // Постоянная времени сглаживания курсора в миллисекундах: решает, за
-  // сколько «бугор» догоняет новую позицию курсора.
-  const POINTER_SMOOTH_MS = 90;
+  // Раньше здесь был искусственный потолок в 24–30 кадров/с — чтобы не
+  // гонять marching squares по всей сетке 60 раз в секунду. После отказа
+  // от сборки сегментов level-за-level (13 проходов по всей сетке) в пользу
+  // одного общего прохода с отсечением уровней вне диапазона [min,max]
+  // ячейки, плюс целочисленный хэш шума вместо Math.sin(), кадр стал на
+  // порядок дешевле — теперь рисуем на каждый тик requestAnimationFrame,
+  // то есть на полную частоту обновления экрана (обычно 60 Гц и выше),
+  // а не с явным троттлингом. Если на слабом устройстве кадр всё же не
+  // укладывается в бюджет, браузер сам пропустит тик rAF — ограничивать
+  // частоту вручную поверх этого не нужно.
+  const POINTER_SMOOTH_MS = 90; // постоянная времени сглаживания курсора, мс
 
-  // Сглаживание курсора считается КАЖДЫЙ тик rAF (а не только когда рисуем
-  // кадр) и зависит от реально прошедшего времени (dt), а не от номера
-  // кадра. Раньше шаг сглаживания 0.12 применялся только в те кадры, где
-  // проходила отрисовка (раз в FRAME_INTERVAL) — при просадках FPS или
-  // редких событиях pointermove «бугор» дёргался вместо плавного следования
-  // за курсором. Экспоненциальное сглаживание с постоянной времени даёт
-  // одинаковую на вид скорость движения независимо от частоты кадров.
+  // Сглаживание курсора — экспоненциальное, с постоянной времени, а не с
+  // фиксированным шагом за кадр: скорость «бугра» не зависит от того,
+  // насколько ровно идут кадры.
   function tickPointer(dt) {
     if (prefersReducedMotion || !hasPointer) return;
     const k = 1 - Math.exp(-dt / POINTER_SMOOTH_MS);
@@ -356,8 +385,6 @@
     const dt = lastTickTime ? time - lastTickTime : 16.7;
     lastTickTime = time;
     tickPointer(dt);
-    if (time - lastDrawTime < FRAME_INTERVAL) return;
-    lastDrawTime = time;
     drawFrame(time);
   }
 
