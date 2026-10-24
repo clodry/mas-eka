@@ -404,7 +404,7 @@ ${authorRow ? `<meta property="article:author" content="${escapeHtml(absoluteUrl
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="${description}">
 <meta name="twitter:image" content="${escapeHtml(ogImage)}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f19'/%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='none' stroke='%231d4a98' stroke-width='4'/%3E%3Ctext x='32' y='42' font-family='Arial, sans-serif' font-size='24' font-weight='bold' fill='%231d4a98' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="/images/brand/favicon-96x96.png">
 <link rel="stylesheet" href="/css/style.css">
 ${verificationMetaHtml}
 ${analyticsHeadHtml}
@@ -534,7 +534,7 @@ router.get('/author/:slug', asyncHandler(async (req, res) => {
 <meta property="og:url" content="${escapeHtml(pageUrl)}">
 <meta property="og:image" content="${escapeHtml(authorPhoto)}">
 <meta property="og:locale" content="ru_RU">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0f19'/%3E%3Crect x='4' y='4' width='56' height='56' rx='12' fill='none' stroke='%231d4a98' stroke-width='4'/%3E%3Ctext x='32' y='42' font-family='Arial, sans-serif' font-size='24' font-weight='bold' fill='%231d4a98' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="/images/brand/favicon-96x96.png">
 <link rel="stylesheet" href="/css/style.css">
 ${verificationMetaHtml}
 ${analyticsHeadHtml}
