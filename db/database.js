@@ -250,9 +250,6 @@ async function initDb() {
   await exec(`CREATE INDEX IF NOT EXISTS idx_analytics_type_created ON analytics_events(type, created_at);`);
   await exec(`CREATE INDEX IF NOT EXISTS idx_analytics_post ON analytics_events(post_id);`);
 
-  const { c } = await get('SELECT COUNT(*) as c FROM posts');
-  if (c === 0) await seedDemoPosts();
-
   const siteContentRow = await get('SELECT id FROM site_content WHERE id = 1');
   if (!siteContentRow) {
     await run(
@@ -279,11 +276,15 @@ async function ensureDefaultAuthor() {
       `INSERT INTO authors (id, name, slug, role, bio, photo, social_url, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       defaultAuthorId,
-      'Мастерская ЕКА',
-      'masterskaya-eka',
-      'Прораб, руководитель бригады',
-      'Ведём объекты от заливки фундамента до сдачи ключей: следим за материалами, сроками и качеством каждого узла.',
-      '/images/builder.jpg',
+      'Ксения Евсеева',
+      'kseniya-evseeva',
+      'Директор',
+      // Пусто по умолчанию — заполняется в админке («Авторы»). При пустой
+      // строке блок био просто не выводится на странице (см. routes/seo.js).
+      '',
+      // null, а не путь-заглушка — при null блок с фото не рендерится вовсе
+      // (author.photo ? <img...> : ''), а не показывает битую картинку.
+      null,
       '',
       now,
       now
@@ -326,62 +327,6 @@ async function saveSiteContent(partialOrFull) {
     new Date().toISOString()
   );
   return merged;
-}
-
-async function seedDemoPosts() {
-  const now = new Date().toISOString();
-  const demoPosts = [
-    {
-      title: 'Как мы выбираем материалы для фундамента',
-      slug: 'kak-my-vybiraem-materialy-dlya-fundamenta',
-      excerpt:
-        'Три критерия, по которым мастерская ЕКА отбирает бетон и арматуру перед закладкой основания.',
-      tags: ['Фундамент', 'Материалы'],
-      blocks: [
-        {
-          type: 'paragraph',
-          text: 'Это демонстрационный пост — замените его на настоящую статью через админ-панель. Здесь можно рассказать про марки бетона, класс арматуры и то, как погодные условия влияют на график заливки фундамента.'
-        }
-      ]
-    },
-    {
-      title: 'Чек-лист перед началом стройки',
-      slug: 'cheklist-pered-nachalom-stroyki',
-      excerpt: 'Что нужно согласовать с заказчиком до того, как бригада выйдет на объект.',
-      tags: ['Чек-листы'],
-      blocks: [
-        { type: 'paragraph', text: 'Демонстрационный текст. Опишите этапы согласования проекта, необходимые документы и типичные сроки.' }
-      ]
-    },
-    {
-      title: 'Отделка мансарды: на что обратить внимание',
-      slug: 'otdelka-mansardy-na-chto-obratit-vnimanie',
-      excerpt: 'Особенности утепления и отделки мансардных помещений в частном доме.',
-      tags: ['Отделка', 'Кровля'],
-      blocks: [
-        { type: 'paragraph', text: 'Демонстрационный текст про пароизоляцию, выбор утеплителя и вентиляцию кровельного пирога.' }
-      ]
-    }
-  ];
-
-  for (const post of demoPosts) {
-    const id = await generateUniquePostId();
-    await run(
-      `INSERT INTO posts (id, title, slug, excerpt, content_blocks, preview_image, tags, status, published_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      id,
-      post.title,
-      post.slug,
-      post.excerpt,
-      JSON.stringify(post.blocks),
-      firstImageSrc(post.blocks),
-      JSON.stringify(post.tags || []),
-      'published',
-      now,
-      now,
-      now
-    );
-  }
 }
 
 // ===== Трекер посещений =====
