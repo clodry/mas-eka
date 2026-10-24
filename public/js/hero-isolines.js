@@ -397,7 +397,21 @@
     rafId = null;
   }
 
+  // «Бугор» под курсором имеет смысл только там, где есть настоящий
+  // курсор, зависающий над страницей без нажатия (мышь/трекпад). На
+  // тачскринах (телефоны, планшеты) pointermove тоже срабатывает — но
+  // только во время свайпа пальцем, то есть деформация линий дёргалась бы
+  // рывками при скролле/жестах, а не была живым откликом на движение
+  // курсора. Поэтому слушатели вообще не вешаем, если у устройства нет
+  // точного наведения без нажатия (pointer: fine + hover: hover).
+  const supportsHoverPointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
   function onPointerMove(e) {
+    // Доп. подстраховка для гибридных устройств (сенсорный ноутбук с
+    // мышью): matchMedia выше отражает основной тип ввода устройства в
+    // целом, а не конкретное событие, поэтому события от пальца всё равно
+    // отфильтровываем по e.pointerType.
+    if (e.pointerType && e.pointerType !== 'mouse' && e.pointerType !== 'pen') return;
     const rect = host.getBoundingClientRect();
     pointerX = e.clientX - rect.left;
     pointerY = e.clientY - rect.top;
@@ -413,9 +427,11 @@
     hasPointer = false;
   }
 
-  window.addEventListener('pointermove', onPointerMove, { passive: true });
-  window.addEventListener('pointerleave', onPointerLeave, { passive: true });
-  window.addEventListener('pointercancel', onPointerLeave, { passive: true });
+  if (supportsHoverPointer) {
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerleave', onPointerLeave, { passive: true });
+    window.addEventListener('pointercancel', onPointerLeave, { passive: true });
+  }
 
   let resizeTimer = null;
   window.addEventListener(
