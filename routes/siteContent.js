@@ -115,6 +115,11 @@ router.put('/', requireAuth, upload.single('heroPhoto'), asyncHandler(async (req
         description: plainText(body.seoBlogDescription, current.seo.blog.description).slice(0, 200),
         h1: plainText(body.seoBlogH1, current.seo.blog.h1).slice(0, 150)
       },
+      portfolio: {
+        title: plainText(body.seoPortfolioTitle, current.seo.portfolio.title).slice(0, 70),
+        description: plainText(body.seoPortfolioDescription, current.seo.portfolio.description).slice(0, 200),
+        h1: plainText(body.seoPortfolioH1, current.seo.portfolio.h1).slice(0, 150)
+      },
       // robots.txt редактируется как многострочный текст — plainText не годится
       // (строки с переносами), поэтому только вырезаем опасные HTML-теги/скрипты.
       robotsTxt: sanitizeHtml(String(body.seoRobotsTxt !== undefined ? body.seoRobotsTxt : current.seo.robotsTxt), {

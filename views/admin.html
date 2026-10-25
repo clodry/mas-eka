@@ -43,6 +43,9 @@
             <button type="button" class="dash-nav-child" data-page="authors" title="Авторы">
               <span class="dash-dot"></span><span class="dash-label-text">Авторы</span>
             </button>
+            <button type="button" class="dash-nav-child" data-page="portfolio" title="Портфолио">
+              <span class="dash-dot"></span><span class="dash-label-text">Портфолио</span>
+            </button>
             <button type="button" class="dash-nav-child" data-page="site-settings" title="Настройки сайта">
               <span class="dash-dot"></span><span class="dash-label-text">Настройки сайта</span>
             </button>
@@ -234,6 +237,100 @@
           </div>
         </section>
 
+        <section id="page-portfolio" class="dash-page" hidden>
+          <h1 class="dash-page-title">Портфолио</h1>
+
+          <div class="admin-panel">
+            <div class="panel-head">
+              <span id="projectFormTitle">Новый проект</span>
+              <button id="resetProjectFormBtn" class="btn btn-ghost" type="button" hidden>Отменить редактирование</button>
+            </div>
+            <form id="projectForm" class="post-form">
+              <input type="hidden" name="id" value="">
+              <label>Название проекта
+                <input type="text" name="title" id="projectTitleInput" required maxlength="180" placeholder="Например: Дом на склоне">
+              </label>
+              <label>
+                Адрес страницы (ЧПУ)
+                <div class="slug-field">
+                  <span class="slug-prefix">/portfolio/</span>
+                  <input type="text" name="slug" id="projectSlugInput" maxlength="200" placeholder="avtomaticheski-iz-nazvaniya">
+                </div>
+                <span class="blocks-hint">Формируется автоматически из названия. Можно изменить вручную.</span>
+              </label>
+              <label>Анонс (кратко для карточки)
+                <textarea name="excerpt" rows="2" required maxlength="240" placeholder="1-2 предложения для превью"></textarea>
+              </label>
+              <div class="form-grid-3">
+                <label>Категория
+                  <input type="text" name="category" maxlength="80" placeholder="Жилой дом">
+                </label>
+                <label>Локация
+                  <input type="text" name="location" maxlength="120" placeholder="г. Маркс">
+                </label>
+                <label>Год
+                  <input type="text" name="year" maxlength="20" placeholder="2025">
+                </label>
+              </div>
+              <label>Теги (через запятую)
+                <input type="text" name="tags" list="projectTagSuggestions" maxlength="200" placeholder="Реконструкция, Интерьер">
+                <datalist id="projectTagSuggestions"></datalist>
+              </label>
+              <label>Описание проекта
+                <textarea name="description" id="projectDescriptionInput" rows="8" maxlength="6000" placeholder="Текст о проекте. Абзацы — через пустую строку."></textarea>
+              </label>
+
+              <div class="preview-field">
+                <div class="blocks-field-head">
+                  <span>Обложка</span>
+                  <span class="blocks-hint">Показывается в карточке списка и как первое фото на странице проекта.</span>
+                </div>
+                <div id="projectCoverBox" class="preview-box"></div>
+              </div>
+
+              <div class="blocks-field">
+                <div class="blocks-field-head">
+                  <span>Галерея</span>
+                  <span class="blocks-hint">Дополнительные фото проекта — выводятся на странице проекта после описания.</span>
+                </div>
+                <div id="projectGalleryBox" class="preview-box-filled" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
+                <label class="file-label" style="margin-top:12px; display:inline-block;">
+                  + Добавить фото в галерею
+                  <input type="file" accept="image/*" id="projectGalleryFileInput" multiple>
+                </label>
+              </div>
+
+              <label>Статус
+                <select name="status">
+                  <option value="published">Опубликован</option>
+                  <option value="draft">Черновик</option>
+                </select>
+              </label>
+
+              <h2 class="settings-subhead">SEO страницы</h2>
+              <label>Title
+                <input type="text" name="seoTitle" maxlength="70" placeholder="Если не заполнено — используется название проекта">
+              </label>
+              <label>Description
+                <textarea name="seoDescription" rows="2" maxlength="200" placeholder="Если не заполнено — используется анонс"></textarea>
+              </label>
+              <label>H1
+                <input type="text" name="h1" maxlength="150" placeholder="Если не заполнено — используется название проекта">
+              </label>
+
+              <div id="projectFormError" class="error-msg" hidden></div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Сохранить проект</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-list">
+            <div class="panel-head"><h2>Все проекты</h2></div>
+            <div id="portfolioAdminList" class="posts-table"></div>
+          </div>
+        </section>
+
         <section id="page-site-settings" class="dash-page" hidden>
           <h1 class="dash-page-title">Настройки сайта</h1>
 
@@ -331,6 +428,17 @@
               </label>
               <label>H1
                 <input type="text" name="seoBlogH1" maxlength="150">
+              </label>
+
+              <h2 class="settings-subhead">SEO — страница портфолио</h2>
+              <label>Title
+                <input type="text" name="seoPortfolioTitle" maxlength="70">
+              </label>
+              <label>Description
+                <textarea name="seoPortfolioDescription" rows="2" maxlength="200"></textarea>
+              </label>
+              <label>H1
+                <input type="text" name="seoPortfolioH1" maxlength="150">
               </label>
 
               <h2 class="settings-subhead">Счётчики и вебмастер</h2>

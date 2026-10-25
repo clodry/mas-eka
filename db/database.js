@@ -78,6 +78,14 @@ async function generateUniqueAuthorId() {
   return id;
 }
 
+async function generateUniqueProjectId() {
+  let id = makeRandomId();
+  while (await get('SELECT 1 FROM portfolio_projects WHERE id = ?', id)) {
+    id = makeRandomId();
+  }
+  return id;
+}
+
 // Отложенный пост (status='scheduled'), время публикации которого уже
 // наступило, должен вести себя как опубликованный везде на публичной части
 // сайта (список блога, страница поста, sitemap) — хотя в самой БД у него
@@ -152,6 +160,11 @@ const DEFAULT_SITE_CONTENT = {
       description:
         'Заметки мастерской ЕКА об архитектуре, пространственном планировании и дизайне: решения, подходы и разборы проектов.',
       h1: 'Заметки из мастерской'
+    },
+    portfolio: {
+      title: 'Портфолио — Мастерская ЕКА',
+      description: 'Реализованные и текущие проекты мастерской ЕКА: архитектура, пространственное планирование и дизайн.',
+      h1: 'Портфолио'
     },
     robotsTxt: 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/'
   },
@@ -228,6 +241,32 @@ async function initDb() {
       bio TEXT NOT NULL DEFAULT '',
       photo TEXT,
       social_url TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  // Портфолио: отдельные от постов блога работы — показываются на /portfolio
+  // и /portfolio/:slug. description — обычный текст (без rich-text разметки
+  // статей блога), разбивается на абзацы при рендере переносом строки через
+  // пустую строку; gallery — JSON-массив ссылок на доп. фото проекта.
+  await exec(`
+    CREATE TABLE IF NOT EXISTS portfolio_projects (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      excerpt TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT '',
+      location TEXT NOT NULL DEFAULT '',
+      year TEXT NOT NULL DEFAULT '',
+      tags TEXT NOT NULL DEFAULT '[]',
+      cover_image TEXT,
+      gallery TEXT NOT NULL DEFAULT '[]',
+      seo_title TEXT,
+      seo_description TEXT,
+      h1 TEXT,
+      status TEXT NOT NULL DEFAULT 'published',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -406,6 +445,7 @@ module.exports = {
   saveSiteContent,
   generateUniquePostId,
   generateUniqueAuthorId,
+  generateUniqueProjectId,
   effectivePostStatus,
   isPostPublic,
   DEFAULT_SITE_CONTENT,
