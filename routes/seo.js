@@ -278,6 +278,12 @@ router.get('/blog', asyncHandler(async (req, res) => {
     SEO_BLOG_TITLE: escapeHtml(content.seo.blog.title),
     SEO_BLOG_DESCRIPTION: escapeHtml(content.seo.blog.description),
     SEO_BLOG_H1: escapeHtml(content.seo.blog.h1),
+    FOOTER_TAGLINE: escapeHtml(content.contacts.tagline),
+    FOOTER_PHONE: escapeHtml(content.contacts.phone),
+    FOOTER_PHONE_HREF: escapeHtml(content.contacts.phone.replace(/[^\d+]/g, '')),
+    FOOTER_EMAIL: escapeHtml(content.contacts.email),
+    FOOTER_ADDRESS: escapeHtml(content.contacts.address),
+    COPYRIGHT_YEAR: String(new Date().getFullYear()),
     VERIFICATION_META_HTML: renderVerificationMetaHtml(content),
     ANALYTICS_HEAD_HTML: renderAnalyticsHeadHtml(content)
   });
@@ -302,6 +308,12 @@ router.get('/portfolio', asyncHandler(async (req, res) => {
     SEO_PORTFOLIO_TITLE: escapeHtml(content.seo.portfolio.title),
     SEO_PORTFOLIO_DESCRIPTION: escapeHtml(content.seo.portfolio.description),
     SEO_PORTFOLIO_H1: escapeHtml(content.seo.portfolio.h1),
+    FOOTER_TAGLINE: escapeHtml(content.contacts.tagline),
+    FOOTER_PHONE: escapeHtml(content.contacts.phone),
+    FOOTER_PHONE_HREF: escapeHtml(content.contacts.phone.replace(/[^\d+]/g, '')),
+    FOOTER_EMAIL: escapeHtml(content.contacts.email),
+    FOOTER_ADDRESS: escapeHtml(content.contacts.address),
+    COPYRIGHT_YEAR: String(new Date().getFullYear()),
     VERIFICATION_META_HTML: renderVerificationMetaHtml(content),
     ANALYTICS_HEAD_HTML: renderAnalyticsHeadHtml(content)
   });
@@ -528,8 +540,31 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
 
 <footer>
   <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand">
+          <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+          <div class="brand-name">${SITE_NAME}</div>
+        </div>
+        <p>${escapeHtml(content.contacts.tagline)}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Контакты</h4>
+        <a href="tel:${escapeHtml(content.contacts.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(content.contacts.phone)}</a>
+        <a href="mailto:${escapeHtml(content.contacts.email)}">${escapeHtml(content.contacts.email)}</a>
+        <p>${escapeHtml(content.contacts.address)}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Разделы</h4>
+        <a href="/">Главная</a>
+        <a href="/portfolio">Портфолио</a>
+        <a href="/blog">Блог</a>
+        <a href="/#about">О нас</a>
+      </div>
+    </div>
     <div class="footer-bottom">
       <span>© ${new Date().getFullYear()} ${SITE_NAME}</span>
+      <span style="color:var(--text-faint)">ООО «МППДА "ЕКА"» · ИНН 6449109445 · ОГРН 1246400012726</span>
     </div>
   </div>
 </footer>
@@ -647,8 +682,31 @@ ${analyticsHeadHtml}
 
 <footer>
   <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand">
+          <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+          <div class="brand-name">${SITE_NAME}</div>
+        </div>
+        <p>${escapeHtml(content.contacts.tagline)}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Контакты</h4>
+        <a href="tel:${escapeHtml(content.contacts.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(content.contacts.phone)}</a>
+        <a href="mailto:${escapeHtml(content.contacts.email)}">${escapeHtml(content.contacts.email)}</a>
+        <p>${escapeHtml(content.contacts.address)}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Разделы</h4>
+        <a href="/">Главная</a>
+        <a href="/portfolio">Портфолио</a>
+        <a href="/blog">Блог</a>
+        <a href="/#about">О нас</a>
+      </div>
+    </div>
     <div class="footer-bottom">
       <span>© ${new Date().getFullYear()} ${SITE_NAME}</span>
+      <span style="color:var(--text-faint)">ООО «МППДА "ЕКА"» · ИНН 6449109445 · ОГРН 1246400012726</span>
     </div>
   </div>
 </footer>
@@ -781,8 +839,31 @@ ${analyticsHeadHtml}
 
 <footer>
   <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand">
+          <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+          <div class="brand-name">${SITE_NAME}</div>
+        </div>
+        <p>${escapeHtml(content.contacts.tagline)}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Контакты</h4>
+        <a href="tel:${escapeHtml(content.contacts.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(content.contacts.phone)}</a>
+        <a href="mailto:${escapeHtml(content.contacts.email)}">${escapeHtml(content.contacts.email)}</a>
+        <p>${escapeHtml(content.contacts.address)}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Разделы</h4>
+        <a href="/">Главная</a>
+        <a href="/portfolio">Портфолио</a>
+        <a href="/blog">Блог</a>
+        <a href="/#about">О нас</a>
+      </div>
+    </div>
     <div class="footer-bottom">
       <span>© ${new Date().getFullYear()} ${SITE_NAME}</span>
+      <span style="color:var(--text-faint)">ООО «МППДА "ЕКА"» · ИНН 6449109445 · ОГРН 1246400012726</span>
     </div>
   </div>
 </footer>

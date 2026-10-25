@@ -141,8 +141,30 @@
 
 <footer>
   <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="brand">
+          <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+          <div class="brand-name">Мастерская ЕКА</div>
+        </div>
+        <p>{{FOOTER_TAGLINE}}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Контакты</h4>
+        <a href="tel:{{FOOTER_PHONE_HREF}}">{{FOOTER_PHONE}}</a>
+        <a href="mailto:{{FOOTER_EMAIL}}">{{FOOTER_EMAIL}}</a>
+        <p>{{FOOTER_ADDRESS}}</p>
+      </div>
+      <div class="footer-col">
+        <h4>Разделы</h4>
+        <a href="/">Главная</a>
+        <a href="/blog">Блог</a>
+        <a href="/#about">О нас</a>
+      </div>
+    </div>
     <div class="footer-bottom">
-      <span>© 2026 Мастерская ЕКА</span>
+      <span>© {{COPYRIGHT_YEAR}} Мастерская ЕКА</span>
+      <span style="color:var(--text-faint)">ООО «МППДА "ЕКА"» · ИНН 6449109445 · ОГРН 1246400012726</span>
     </div>
   </div>
 </footer>
