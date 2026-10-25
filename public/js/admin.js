@@ -49,6 +49,20 @@ const authorPhotoBox = document.getElementById('authorPhotoBox');
 const authorsList = document.getElementById('authorsList');
 const resetAuthorFormBtn = document.getElementById('resetAuthorFormBtn');
 
+// ===== Страница «Портфолио» =====
+const projectForm = document.getElementById('projectForm');
+const projectFormTitle = document.getElementById('projectFormTitle');
+const projectFormError = document.getElementById('projectFormError');
+const projectTitleInput = document.getElementById('projectTitleInput');
+const projectSlugInput = document.getElementById('projectSlugInput');
+const projectDescriptionInput = document.getElementById('projectDescriptionInput');
+const projectCoverBox = document.getElementById('projectCoverBox');
+const projectGalleryBox = document.getElementById('projectGalleryBox');
+const projectGalleryFileInput = document.getElementById('projectGalleryFileInput');
+const portfolioAdminList = document.getElementById('portfolioAdminList');
+const resetProjectFormBtn = document.getElementById('resetProjectFormBtn');
+const projectTagSuggestions = document.getElementById('projectTagSuggestions');
+
 const siteContentForm = document.getElementById('siteContentForm');
 const siteContentError = document.getElementById('siteContentError');
 const siteContentSuccess = document.getElementById('siteContentSuccess');
@@ -102,6 +116,17 @@ if (slugInput) {
   postForm.elements.title.addEventListener('input', () => {
     if (slugTouchedByUser) return;
     slugInput.value = clientSlugify(postForm.elements.title.value);
+  });
+}
+
+let projectSlugTouchedByUser = false;
+if (projectSlugInput) {
+  projectSlugInput.addEventListener('input', () => {
+    projectSlugTouchedByUser = projectSlugInput.value.trim().length > 0;
+  });
+  projectTitleInput.addEventListener('input', () => {
+    if (projectSlugTouchedByUser) return;
+    projectSlugInput.value = clientSlugify(projectTitleInput.value);
   });
 }
 
@@ -548,6 +573,7 @@ const PAGE_TO_URL = {
   'new-post': '/admin/newpost',
   'posts': '/admin/posts',
   'authors': '/admin/authors',
+  'portfolio': '/admin/portfolio',
   'site-settings': '/admin/settings'
 };
 const URL_TO_PAGE = {
@@ -556,6 +582,7 @@ const URL_TO_PAGE = {
   '/admin/newpost': 'new-post',
   '/admin/posts': 'posts',
   '/admin/authors': 'authors',
+  '/admin/portfolio': 'portfolio',
   '/admin/settings': 'site-settings'
 };
 
@@ -613,6 +640,7 @@ document.querySelectorAll('.dash-nav-child').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.dataset.page === 'new-post') resetForm();
     if (btn.dataset.page === 'authors') loadAuthors();
+    if (btn.dataset.page === 'portfolio') loadPortfolio();
     goToPage(btn.dataset.page);
   });
 });
@@ -1400,6 +1428,267 @@ async function deleteAuthor(id) {
 
 renderAuthorPhotoBox();
 
+// ===== Страница «Портфолио» =====
+let projectCoverState = { file: null, existingSrc: null };
+let projectCoverRemoved = false;
+// Галерея хранится как keptUrls (уже сохранённые на сервере фото, которые
+// оставляем) + newFiles (только что выбранные, ещё не загруженные файлы).
+let projectGalleryState = { keptUrls: [], newFiles: [] };
+let portfolioAdminState = [];
+
+function renderProjectCoverBox() {
+  const url = projectCoverState.file ? URL.createObjectURL(projectCoverState.file) : projectCoverState.existingSrc;
+
+  if (!url) {
+    projectCoverBox.innerHTML = `
+      <div class="preview-box-empty">
+        <span>Обложка не выбрана</span>
+        <label class="file-label">
+          Выбрать фото
+          <input type="file" accept="image/*" id="projectCoverFileInput">
+        </label>
+      </div>`;
+  } else {
+    projectCoverBox.innerHTML = `
+      <div class="preview-box-filled">
+        <div class="preview-thumb"><img src="${url}" alt=""></div>
+        <div class="preview-actions">
+          <label class="file-label">
+            Заменить фото
+            <input type="file" accept="image/*" id="projectCoverFileInput">
+          </label>
+          <button type="button" id="clearProjectCoverBtn" class="icon-btn" title="Убрать фото">Убрать фото</button>
+        </div>
+      </div>`;
+  }
+
+  const fileInput = document.getElementById('projectCoverFileInput');
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      projectCoverState = { file, existingSrc: null };
+      renderProjectCoverBox();
+    });
+  }
+  const clearBtn = document.getElementById('clearProjectCoverBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      projectCoverState = { file: null, existingSrc: null };
+      projectCoverRemoved = true;
+      renderProjectCoverBox();
+    });
+  }
+}
+
+// Галерея рисуется как набор миниатюр (сохранённых + только что выбранных)
+// с кнопкой удаления на каждой — в отличие от обложки, тут нет предела в 1 фото.
+function renderProjectGalleryBox() {
+  const keptThumbs = projectGalleryState.keptUrls.map(
+    (url, i) => `
+    <div class="preview-thumb" style="width:96px; height:96px; position:relative;" data-kept-index="${i}">
+      <img src="${url}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-sm);">
+      <button type="button" class="icon-btn remove-gallery-kept" data-index="${i}" title="Убрать" style="position:absolute; top:4px; right:4px;">✕</button>
+    </div>`
+  );
+  const newThumbs = projectGalleryState.newFiles.map(
+    (file, i) => `
+    <div class="preview-thumb" style="width:96px; height:96px; position:relative;" data-new-index="${i}">
+      <img src="${URL.createObjectURL(file)}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-sm);">
+      <button type="button" class="icon-btn remove-gallery-new" data-index="${i}" title="Убрать" style="position:absolute; top:4px; right:4px;">✕</button>
+    </div>`
+  );
+
+  projectGalleryBox.innerHTML =
+    keptThumbs.join('') + newThumbs.join('') ||
+    '<span style="color:var(--text-muted); font-size:13.5px;">Фото галереи ещё не добавлены</span>';
+
+  projectGalleryBox.querySelectorAll('.remove-gallery-kept').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      projectGalleryState.keptUrls.splice(Number(btn.dataset.index), 1);
+      renderProjectGalleryBox();
+    });
+  });
+  projectGalleryBox.querySelectorAll('.remove-gallery-new').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      projectGalleryState.newFiles.splice(Number(btn.dataset.index), 1);
+      renderProjectGalleryBox();
+    });
+  });
+}
+
+projectGalleryFileInput.addEventListener('change', () => {
+  projectGalleryState.newFiles.push(...Array.from(projectGalleryFileInput.files));
+  projectGalleryFileInput.value = '';
+  renderProjectGalleryBox();
+});
+
+function statusBadgeHtmlFor(status) {
+  return status === 'draft'
+    ? '<span class="status-badge status-draft">Черновик</span>'
+    : '<span class="status-badge status-published">Опубликован</span>';
+}
+
+function renderPortfolioTable(projects) {
+  if (!projects.length) {
+    portfolioAdminList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Пока нет проектов.</p>';
+    return;
+  }
+  portfolioAdminList.innerHTML = projects
+    .map(
+      (p) => `
+    <div class="post-row" data-id="${p.id}">
+      <div class="thumb-mini">${p.coverImage ? `<img src="${p.coverImage}" alt="">` : ''}</div>
+      <div class="info">
+        <h3>${escapeHtml(p.title)}</h3>
+        <span class="date">${p.category ? escapeHtml(p.category) + ' · ' : ''}${formatDate(p.updated_at)}</span>
+        ${statusBadgeHtmlFor(p.status)}
+      </div>
+      <div class="actions">
+        <a href="/portfolio/${encodeURIComponent(p.slug)}" target="_blank" rel="noopener" class="btn-mini">Открыть ↗</a>
+        <button class="edit-btn" data-id="${p.id}">Редактировать</button>
+        <button class="delete-btn" data-id="${p.id}">Удалить</button>
+      </div>
+    </div>`
+    )
+    .join('');
+
+  portfolioAdminList.querySelectorAll('.edit-btn').forEach((btn) => {
+    btn.addEventListener('click', () => startEditProject(btn.dataset.id));
+  });
+  portfolioAdminList.querySelectorAll('.delete-btn').forEach((btn) => {
+    btn.addEventListener('click', () => deleteProject(btn.dataset.id));
+  });
+}
+
+async function loadPortfolio() {
+  portfolioAdminList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Загрузка…</p>';
+  try {
+    const res = await fetch('/api/portfolio');
+    portfolioAdminState = await res.json();
+    renderPortfolioTable(portfolioAdminState);
+
+    fetch('/api/portfolio/tags/all')
+      .then((r) => r.json())
+      .then((tags) => {
+        projectTagSuggestions.innerHTML = tags.map(({ tag }) => `<option value="${escapeHtml(tag)}">`).join('');
+      })
+      .catch(() => {});
+  } catch (err) {
+    portfolioAdminList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Не удалось загрузить проекты.</p>';
+  }
+}
+
+function resetProjectForm() {
+  projectForm.reset();
+  projectForm.elements.id.value = '';
+  projectSlugTouchedByUser = false;
+  projectCoverState = { file: null, existingSrc: null };
+  projectCoverRemoved = false;
+  projectGalleryState = { keptUrls: [], newFiles: [] };
+  renderProjectCoverBox();
+  renderProjectGalleryBox();
+  projectFormTitle.textContent = 'Новый проект';
+  resetProjectFormBtn.hidden = true;
+  projectFormError.hidden = true;
+}
+
+function startEditProject(id) {
+  const project = portfolioAdminState.find((p) => String(p.id) === String(id));
+  if (!project) return;
+  projectForm.elements.id.value = project.id;
+  projectTitleInput.value = project.title;
+  projectSlugInput.value = project.slug;
+  projectSlugTouchedByUser = true;
+  projectForm.elements.excerpt.value = project.excerpt || '';
+  projectForm.elements.category.value = project.category || '';
+  projectForm.elements.location.value = project.location || '';
+  projectForm.elements.year.value = project.year || '';
+  projectForm.elements.tags.value = (project.tags || []).join(', ');
+  projectDescriptionInput.value = project.description || '';
+  projectForm.elements.status.value = project.status || 'published';
+  projectForm.elements.seoTitle.value = project.seoTitle || '';
+  projectForm.elements.seoDescription.value = project.seoDescription || '';
+  projectForm.elements.h1.value = project.h1 || '';
+
+  projectCoverState = { file: null, existingSrc: project.coverImage };
+  projectCoverRemoved = false;
+  projectGalleryState = { keptUrls: [...(project.gallery || [])], newFiles: [] };
+  renderProjectCoverBox();
+  renderProjectGalleryBox();
+
+  projectFormTitle.textContent = `Редактирование: ${project.title}`;
+  resetProjectFormBtn.hidden = false;
+  projectFormError.hidden = true;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+resetProjectFormBtn.addEventListener('click', resetProjectForm);
+
+projectForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  projectFormError.hidden = true;
+
+  const id = projectForm.elements.id.value;
+  const formData = new FormData();
+  formData.append('title', projectTitleInput.value);
+  formData.append('slug', projectSlugInput.value);
+  formData.append('excerpt', projectForm.elements.excerpt.value);
+  formData.append('category', projectForm.elements.category.value);
+  formData.append('location', projectForm.elements.location.value);
+  formData.append('year', projectForm.elements.year.value);
+  formData.append('tags', projectForm.elements.tags.value);
+  formData.append('description', projectDescriptionInput.value);
+  formData.append('status', projectForm.elements.status.value);
+  formData.append('seoTitle', projectForm.elements.seoTitle.value);
+  formData.append('seoDescription', projectForm.elements.seoDescription.value);
+  formData.append('h1', projectForm.elements.h1.value);
+
+  if (projectCoverState.file) formData.append('cover', projectCoverState.file);
+  if (projectCoverRemoved) formData.append('removeCover', '1');
+
+  formData.append('galleryKept', JSON.stringify(projectGalleryState.keptUrls));
+  projectGalleryState.newFiles.forEach((file) => formData.append('gallery', file));
+
+  const url = id ? `/api/portfolio/${id}` : '/api/portfolio';
+  try {
+    const res = await fetch(url, { method: id ? 'PUT' : 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) {
+      projectFormError.textContent = data.error || 'Не удалось сохранить проект';
+      projectFormError.hidden = false;
+      return;
+    }
+    resetProjectForm();
+    await loadPortfolio();
+  } catch (err) {
+    projectFormError.textContent = 'Ошибка соединения с сервером';
+    projectFormError.hidden = false;
+  }
+});
+
+async function deleteProject(id) {
+  const project = portfolioAdminState.find((p) => String(p.id) === String(id));
+  const confirmed = window.confirm(`Удалить проект «${project ? project.title : ''}»? Действие необратимо.`);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/portfolio/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error || 'Не удалось удалить проект');
+      return;
+    }
+    await loadPortfolio();
+    if (projectForm.elements.id.value === String(id)) resetProjectForm();
+  } catch (err) {
+    alert('Ошибка соединения с сервером');
+  }
+}
+
+renderProjectCoverBox();
+renderProjectGalleryBox();
+
 // ===== Настройки сайта (герой / о нас / контакты) =====
 let siteContentState = null;
 let heroPhotoState = { file: null, existingSrc: null };
@@ -1530,6 +1819,9 @@ async function loadSiteContent() {
       seoBlogTitle: content.seo.blog.title,
       seoBlogDescription: content.seo.blog.description,
       seoBlogH1: content.seo.blog.h1,
+      seoPortfolioTitle: content.seo.portfolio.title,
+      seoPortfolioDescription: content.seo.portfolio.description,
+      seoPortfolioH1: content.seo.portfolio.h1,
       seoRobotsTxt: content.seo.robotsTxt,
       analyticsYandexMetrika: content.analytics.yandexMetrikaCode,
       analyticsGoogleAnalytics: content.analytics.googleAnalyticsCode,
@@ -1563,7 +1855,8 @@ siteContentForm.addEventListener('submit', async (e) => {
     'heroEyebrow', 'heroLine1', 'heroLine2', 'heroLine3', 'heroLead', 'heroPhotoAlt',
     'aboutEyebrow', 'aboutTitle', 'aboutDesc', 'aboutP1', 'aboutP2',
     'contactsTagline', 'contactsPhone', 'contactsEmail', 'contactsAddress',
-    'seoHomeTitle', 'seoHomeDescription', 'seoBlogTitle', 'seoBlogDescription', 'seoBlogH1', 'seoRobotsTxt',
+    'seoHomeTitle', 'seoHomeDescription', 'seoBlogTitle', 'seoBlogDescription', 'seoBlogH1',
+    'seoPortfolioTitle', 'seoPortfolioDescription', 'seoPortfolioH1', 'seoRobotsTxt',
     'analyticsYandexMetrika', 'analyticsGoogleAnalytics', 'analyticsYandexVerification', 'analyticsGoogleVerification'
   ].forEach((name) => fd.append(name, siteContentForm.elements[name].value));
   fd.append('stats', JSON.stringify(statsState));

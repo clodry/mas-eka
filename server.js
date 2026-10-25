@@ -10,6 +10,7 @@ const { initDb, logAnalyticsEvent } = require('./db/database');
 const authRouter = require('./routes/auth');
 const postsRouter = require('./routes/posts');
 const authorsRouter = require('./routes/authors');
+const portfolioRouter = require('./routes/portfolio');
 const siteContentRouter = require('./routes/siteContent');
 const seoRouter = require('./routes/seo');
 const analyticsRouter = require('./routes/analytics');
@@ -156,7 +157,7 @@ app.get('/admin/auth', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'admin-login.html'));
 });
 
-app.get(['/admin', '/admin/newpost', '/admin/posts', '/admin/authors', '/admin/settings', '/admin/posts/edit/:id', '/admin/posts/:id'], (req, res) => {
+app.get(['/admin', '/admin/newpost', '/admin/posts', '/admin/authors', '/admin/portfolio', '/admin/settings', '/admin/posts/edit/:id', '/admin/posts/:id'], (req, res) => {
   if (!isAdminSession(req)) {
     return res.redirect('/admin/auth');
   }
@@ -181,6 +182,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', authRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/authors', authorsRouter);
+app.use('/api/portfolio', portfolioRouter);
 app.use('/api/site-content', siteContentRouter);
 app.use('/api/analytics', analyticsRouter);
 

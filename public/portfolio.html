@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{SEO_PORTFOLIO_TITLE}}</title>
+<meta name="description" content="{{SEO_PORTFOLIO_DESCRIPTION}}">
+<link rel="canonical" href="{{SITE_URL}}/portfolio">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Мастерская ЕКА">
+<meta property="og:title" content="{{SEO_PORTFOLIO_TITLE}}">
+<meta property="og:description" content="{{SEO_PORTFOLIO_DESCRIPTION}}">
+<meta property="og:url" content="{{SITE_URL}}/portfolio">
+<meta property="og:image" content="{{SITE_URL}}/images/brand/hero-blueprint.jpg">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{SEO_PORTFOLIO_TITLE}}">
+<meta name="twitter:description" content="{{SEO_PORTFOLIO_DESCRIPTION}}">
+<meta name="twitter:image" content="{{SITE_URL}}/images/brand/hero-blueprint.jpg">
+<link rel="icon" href="/images/brand/favicon-96x96.png">
+<link rel="stylesheet" href="/css/style.css">
+{{VERIFICATION_META_HTML}}
+{{ANALYTICS_HEAD_HTML}}
+<style>
+  /* Стили списка проектов и страницы проекта. routes/seo.js вставляет этот
+     же блок в серверный HTML страницы /portfolio/:slug — правки отсюда
+     попадают и туда. Карточки и сетка переиспользуют классы блога
+     (.post-card/.blog-grid и т.п. из public/css/style.css и blog.html) —
+     визуально портфолио и блог выглядят единообразно. */
+  .blog-hero { padding: 180px 0 64px; }
+  .blog-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 4.6vw, 62px);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.06;
+    margin: 0 0 18px;
+  }
+  .blog-hero p { color: var(--text-muted); max-width: 58ch; font-size: 18px; }
+  .blog-grid { padding-bottom: 140px; }
+  .post-full {
+    display: none;
+    padding: 180px 0 140px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  .post-full.active { display: block; }
+  .portfolio-list.hidden { display: none; }
+  .post-full .back-link { font-size: 13.5px; font-weight: 600; color: var(--accent); margin-bottom: 40px; display: inline-block; }
+  .post-full h1 {
+    font-family: var(--font-display);
+    font-size: clamp(30px, 3.8vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.032em;
+    margin: 0 0 14px;
+    line-height: 1.12;
+  }
+  .project-meta { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 0 0 30px; }
+  .project-meta span {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .project-meta span:not(:last-child)::after { content: '·'; margin-left: 18px; color: var(--line-solid); }
+  .post-full .content { color: var(--ink-soft); font-size: 17.5px; line-height: 1.8; }
+  .post-full .content p { margin: 0 0 26px; }
+  .post-full .content .post-figure { margin: 40px 0; }
+  .post-full .content .post-figure img { width: 100%; display: block; border-radius: var(--radius-md); }
+  .project-cover { margin: 0 0 40px !important; }
+  .project-cover img { width: 100%; display: block; border-radius: var(--radius-md); }
+  .project-gallery {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: 40px;
+  }
+  .project-gallery .post-figure { margin: 0; }
+  .project-gallery img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: var(--radius-md); }
+  .card-category {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  @media (max-width: 900px) {
+    .blog-hero { padding-top: 132px; }
+    .post-full { padding-top: 132px; }
+  }
+  @media (max-width: 640px) {
+    .project-gallery { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="navbar">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
+      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+    </a>
+    <nav class="nav-links" aria-label="Основная навигация">
+      <a href="/">Главная</a>
+      <a href="/portfolio">Портфолио</a>
+      <a href="/blog">Блог</a>
+      <a href="/#about">О нас</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="portfolioList" class="portfolio-list">
+    <section class="blog-hero">
+      <div class="wrap reveal" style="position:relative">
+        <div class="eyebrow">Портфолио</div>
+        <h1>{{SEO_PORTFOLIO_H1}}</h1>
+        <p>Реализованные и текущие проекты мастерской — архитектура, пространственное планирование и дизайн.</p>
+      </div>
+    </section>
+    <section>
+      <div class="wrap">
+        <div id="tagFilterBar" class="tag-filter-bar"></div>
+        <div class="blog-grid" id="portfolioGrid">
+          <p style="color:var(--text-muted)">Загружаем проекты…</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="projectView" class="post-full">
+    <div class="wrap">
+      <a href="#" id="backToList" class="back-link">← Все проекты</a>
+      <div id="projectContent"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 Мастерская ЕКА</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/main.js"></script>
+<script src="/js/portfolio.js"></script>
+</body>
+</html>

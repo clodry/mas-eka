@@ -177,6 +177,60 @@ function renderValuesHtml(values) {
     .join('\n');
 }
 
+function parseJsonArray(raw) {
+  try {
+    const v = JSON.parse(raw || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function serializeProjectRow(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    description: row.description || '',
+    category: row.category || '',
+    location: row.location || '',
+    year: row.year || '',
+    tags: parseJsonArray(row.tags),
+    coverImage: row.cover_image,
+    gallery: parseJsonArray(row.gallery),
+    seoTitle: row.seo_title || '',
+    seoDescription: row.seo_description || '',
+    h1: row.h1 || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
+// Описание проекта — обычный текст из textarea в админке (без rich-text,
+// как в статьях блога): абзацы разделяются пустой строкой, перенос строки
+// внутри абзаца — через <br>. Текст экранируется целиком.
+function renderDescriptionHtml(text) {
+  return String(text || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+function renderGalleryHtml(gallery) {
+  if (!Array.isArray(gallery) || !gallery.length) return '';
+  return `<div class="project-gallery">${gallery
+    .map((src) => `<figure class="post-figure"><img src="${escapeHtml(src)}" alt=""></figure>`)
+    .join('')}</div>`;
+}
+
+function renderProjectMetaHtml(project) {
+  const items = [project.category, project.location, project.year].filter(Boolean);
+  return items.length ? `<div class="project-meta">${items.map((i) => `<span>${escapeHtml(i)}</span>`).join('')}</div>` : '';
+}
+
 // Главная страница — контент (герой/о нас/контакты) подтягивается из
 // site_content в БД (редактируется в админке), плюс абсолютные canonical/og:*
 router.get('/', asyncHandler(async (req, res) => {
@@ -240,6 +294,19 @@ router.get('/blog.html', (req, res) => {
   res.redirect(301, `/blog${query}`);
 });
 
+// Список проектов портфолио — контент карточек подгружается на клиенте
+// (public/js/portfolio.js), здесь только SEO-оболочка, как и у /blog.
+router.get('/portfolio', asyncHandler(async (req, res) => {
+  const content = await getSiteContent();
+  renderStaticTemplate(req, res, path.join(__dirname, '../public/portfolio.html'), {
+    SEO_PORTFOLIO_TITLE: escapeHtml(content.seo.portfolio.title),
+    SEO_PORTFOLIO_DESCRIPTION: escapeHtml(content.seo.portfolio.description),
+    SEO_PORTFOLIO_H1: escapeHtml(content.seo.portfolio.h1),
+    VERIFICATION_META_HTML: renderVerificationMetaHtml(content),
+    ANALYTICS_HEAD_HTML: renderAnalyticsHeadHtml(content)
+  });
+}));
+
 // Текст robots.txt редактируется в админке («Настройки сайта») и хранится в БД.
 // Строку Sitemap всегда подставляем сами (с актуальным адресом сайта для
 // текущего запроса) — чтобы админ не мог случайно испортить или забыть её,
@@ -263,6 +330,8 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   const allPosts = await all('SELECT slug, status, published_at, updated_at, preview_image FROM posts ORDER BY created_at DESC');
   const posts = allPosts.filter((p) => effectivePostStatus(p) === 'published');
   const authors = await all('SELECT slug, updated_at FROM authors ORDER BY created_at ASC');
+  const allProjects = await all(`SELECT slug, status, updated_at, cover_image FROM portfolio_projects ORDER BY created_at DESC`);
+  const projects = allProjects.filter((p) => p.status === 'published');
 
   // Свежесть главной/списка блога привязываем к последней опубликованной
   // (обновлённой) статье — так поисковики видят, что раздел живой.
@@ -274,6 +343,14 @@ router.get('/sitemap.xml', asyncHandler(async (req, res) => {
   const urls = [
     { loc: `${base}/`, lastmod: latestDate, changefreq: 'monthly', priority: '1.0' },
     { loc: `${base}/blog`, lastmod: latestDate, changefreq: 'weekly', priority: '0.8' },
+    { loc: `${base}/portfolio`, changefreq: 'weekly', priority: '0.8' },
+    ...projects.map((p) => ({
+      loc: `${base}/portfolio/${p.slug}`,
+      lastmod: p.updated_at.split('T')[0],
+      changefreq: 'monthly',
+      priority: '0.6',
+      image: p.cover_image ? absoluteUrl(req, p.cover_image) : null
+    })),
     ...posts.map((p) => ({
       loc: `${base}/blog/${p.slug}`,
       lastmod: p.updated_at.split('T')[0],
@@ -419,6 +496,12 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
     <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
     </a>
+    <nav class="nav-links" aria-label="Основная навигация">
+      <a href="/">Главная</a>
+      <a href="/portfolio">Портфолио</a>
+      <a href="/blog">Блог</a>
+      <a href="/#about">О нас</a>
+    </nav>
   </div>
 </header>
 
@@ -453,6 +536,125 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
 
 <script src="/js/main.js"></script>
 <script src="/js/blog.js"></script>
+</body>
+</html>`);
+}));
+
+// GET /portfolio/:slug — страница одного проекта. По структуре близко к
+// /blog/:slug (SEO-теги, JSON-LD, стили из portfolio.html), но без авторского
+// блока/тегов блога — вместо них строка категория/локация/год и галерея.
+router.get('/portfolio/:slug', asyncHandler(async (req, res) => {
+  const row = await get('SELECT * FROM portfolio_projects WHERE slug = ?', req.params.slug);
+  if (!row || row.status !== 'published') {
+    return res.status(404).sendFile(path.join(__dirname, '../public/404.html'));
+  }
+
+  const project = serializeProjectRow(row);
+  const content = await getSiteContent();
+  const portfolioH1 = escapeHtml(content.seo.portfolio.h1);
+  const verificationMetaHtml = renderVerificationMetaHtml(content);
+  const analyticsHeadHtml = renderAnalyticsHeadHtml(content);
+  const pageUrl = absoluteUrl(req, `/portfolio/${project.slug}`);
+  const ogImage = absoluteUrl(req, project.coverImage || DEFAULT_OG_IMAGE);
+
+  const seoTitleRaw = project.seoTitle || project.title;
+  const seoDescriptionRaw = project.seoDescription || project.excerpt;
+  const h1Raw = project.h1 || project.title;
+  const description = escapeHtml(seoDescriptionRaw);
+  const title = escapeHtml(seoTitleRaw);
+  const h1 = escapeHtml(h1Raw);
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    name: h1Raw,
+    description: seoDescriptionRaw,
+    image: ogImage,
+    dateCreated: project.created_at,
+    dateModified: project.updated_at,
+    creator: { '@type': 'Organization', name: SITE_NAME },
+    url: pageUrl,
+    ...(project.location ? { locationCreated: project.location } : {}),
+    ...(project.tags.length ? { keywords: project.tags.join(', ') } : {})
+  };
+
+  const portfolioCss = fs.readFileSync(path.join(__dirname, '../public/portfolio.html'), 'utf8');
+  const styleMatch = portfolioCss.match(/<style>([\s\S]*?)<\/style>/);
+  const inlineStyles = styleMatch ? styleMatch[1] : '';
+
+  res.type('html').send(`<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title} — ${SITE_NAME}</title>
+<meta name="description" content="${description}">
+<link rel="canonical" href="${escapeHtml(pageUrl)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="${SITE_NAME}">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${description}">
+<meta property="og:url" content="${escapeHtml(pageUrl)}">
+<meta property="og:image" content="${escapeHtml(ogImage)}">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="${description}">
+<meta name="twitter:image" content="${escapeHtml(ogImage)}">
+<link rel="icon" href="/images/brand/favicon-96x96.png">
+<link rel="stylesheet" href="/css/style.css">
+${verificationMetaHtml}
+${analyticsHeadHtml}
+<style>${inlineStyles}</style>
+<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+</head>
+<body>
+
+<header class="navbar">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
+      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+    </a>
+    <nav class="nav-links" aria-label="Основная навигация">
+      <a href="/">Главная</a>
+      <a href="/portfolio">Портфолио</a>
+      <a href="/blog">Блог</a>
+      <a href="/#about">О нас</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="portfolioList" class="portfolio-list hidden">
+    <section class="blog-hero">
+      <div class="wrap"><h1>${portfolioH1}</h1></div>
+    </section>
+  </div>
+
+  <div id="projectView" class="post-full active">
+    <div class="wrap">
+      <a href="/portfolio" id="backToList" class="back-link">← Все проекты</a>
+      <article id="projectContent">
+        <h1>${h1}</h1>
+        ${renderProjectMetaHtml(project)}
+        ${project.coverImage ? `<figure class="post-figure project-cover"><img src="${escapeHtml(project.coverImage)}" alt=""></figure>` : ''}
+        <div class="content">${renderDescriptionHtml(project.description)}</div>
+        ${renderGalleryHtml(project.gallery)}
+      </article>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© ${new Date().getFullYear()} ${SITE_NAME}</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/main.js"></script>
+<script src="/js/portfolio.js"></script>
 </body>
 </html>`);
 }));
@@ -548,6 +750,12 @@ ${analyticsHeadHtml}
     <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
     </a>
+    <nav class="nav-links" aria-label="Основная навигация">
+      <a href="/">Главная</a>
+      <a href="/portfolio">Портфолио</a>
+      <a href="/blog">Блог</a>
+      <a href="/#about">О нас</a>
+    </nav>
   </div>
 </header>
 
