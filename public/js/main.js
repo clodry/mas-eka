@@ -1,7 +1,28 @@
 // ===== Навбар: смена фона при скролле =====
-// Меню-ссылок и бургера в навбаре больше нет (остался только логотип),
-// поэтому здесь остался только переключатель фона шапки при скролле.
+// Поведение навигации и оформление шапки при прокрутке.
 const navbar = document.querySelector('.navbar');
+const menuButton = document.querySelector('.nav-toggle');
+const primaryNavigation = document.querySelector('.nav-links');
+
+function setMenuOpen(isOpen) {
+  if (!navbar || !menuButton) return;
+  navbar.classList.toggle('menu-open', isOpen);
+  menuButton.setAttribute('aria-expanded', String(isOpen));
+  menuButton.setAttribute('aria-label', isOpen ? 'Закрыть меню' : 'Открыть меню');
+}
+
+menuButton?.addEventListener('click', () => {
+  setMenuOpen(menuButton.getAttribute('aria-expanded') !== 'true');
+});
+primaryNavigation?.addEventListener('click', (event) => {
+  if (event.target.closest('a')) setMenuOpen(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') setMenuOpen(false);
+});
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 720) setMenuOpen(false);
+});
 
 function onScroll() {
   if (window.scrollY > 40) navbar.classList.add('scrolled');

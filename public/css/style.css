@@ -105,6 +105,7 @@ a { color: inherit; text-decoration: none; }
 .navbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 
 .nav-links { display: flex; align-items: center; gap: 32px; }
+.nav-toggle { display: none; }
 .nav-links a {
   font-size: 14.5px;
   font-weight: 600;
@@ -124,7 +125,29 @@ a { color: inherit; text-decoration: none; }
 }
 .nav-links a:hover { color: var(--accent); }
 .nav-links a:hover::after { right: 0; }
-@media (max-width: 720px) { .nav-links { gap: 20px; } .nav-links a { font-size: 13.5px; } }
+@media (max-width: 720px) {
+  .navbar { padding: 18px 0; }
+  .navbar.scrolled { padding: 14px 0; }
+  .navbar .wrap { position: relative; }
+  .nav-toggle {
+    width: 44px; height: 44px; padding: 0;
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.92); color: var(--ink); cursor: pointer;
+  }
+  .nav-toggle span { width: 18px; height: 2px; background: currentColor; transition: transform .2s ease; }
+  .navbar.menu-open .nav-toggle span:first-child { transform: translateY(4px) rotate(45deg); }
+  .navbar.menu-open .nav-toggle span:last-child { transform: translateY(-4px) rotate(-45deg); }
+  .nav-links {
+    display: none; position: absolute; top: calc(100% + 14px); left: var(--gutter); right: var(--gutter);
+    flex-direction: column; align-items: stretch; gap: 0; padding: 8px 16px;
+    background: #fff; border: 1px solid var(--line-solid); border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(14,17,22,.12);
+  }
+  .navbar.menu-open .nav-links { display: flex; }
+  .nav-links a { padding: 12px 4px; font-size: 15px; }
+  .nav-links a + a { border-top: 1px solid var(--line-solid); }
+}
 
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-logo { width: auto; height: 30px; border-radius: 0; }
@@ -145,6 +168,13 @@ a { color: inherit; text-decoration: none; }
   text-transform: uppercase;
   color: var(--text-faint);
   margin-top: 3px;
+}
+.brand-descriptor {
+  max-width: 38ch;
+  margin: 14px 0 0 !important;
+  color: var(--text-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.5;
 }
 
 /* ===== Первый экран =====
@@ -230,6 +260,7 @@ a { color: inherit; text-decoration: none; }
   margin: 0 0 28px;
 }
 .hero h1 .line { display: block; overflow: hidden; }
+.hero h1 .line-intro span { font-size: .58em; letter-spacing: -.02em; }
 .hero h1 .line span {
   display: inline-block;
   transform: translateY(110%);
@@ -255,6 +286,7 @@ a { color: inherit; text-decoration: none; }
   animation: fade-up 0.8s var(--ease-out) forwards;
   animation-delay: 0.85s;
 }
+.hero-actions .btn { min-height: 54px; justify-content: center; }
 @keyframes fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ===== Кнопки ===== */
@@ -274,15 +306,12 @@ a { color: inherit; text-decoration: none; }
 }
 .btn-primary { background: var(--accent); color: #ffffff; }
 .btn-primary:hover { background: var(--accent-dim); }
-/* Вторая кнопка стоит поверх фотографии, поэтому у неё непрозрачная
-   подложка — на голом снимке контур бы потерялся. */
 .btn-ghost {
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--ink);
-  border-color: var(--line-strong);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--accent);
 }
-.btn-ghost:hover { border-color: var(--ink); background: #ffffff; }
+.btn-ghost:hover { border-color: var(--accent-dim); background: var(--accent-deep); color: var(--accent-dim); }
 
 .scroll-cue {
   position: absolute;
