@@ -363,6 +363,22 @@ h2.section-title {
   margin: 0 0 22px;
 }
 .section-desc { color: var(--text-muted); font-size: 18px; margin: 0; max-width: 60ch; }
+.about-section-head { margin-bottom: clamp(64px, 9vw, 128px); }
+.about-section-head .about-eyebrow {
+  margin-bottom: 24px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.about-section-head .section-title {
+  max-width: 17ch;
+  font-size: clamp(40px, 5.2vw, 68px);
+  font-weight: 800;
+  margin-bottom: 42px;
+}
+.about-section-head .section-desc { max-width: 58ch; }
 
 /* ===== О нас ===== */
 .about-grid {
@@ -379,6 +395,13 @@ h2.section-title {
   align-items: start;
 }
 .about-copy p { color: var(--text-muted); margin: 0 0 22px; }
+.about-copy p.about-proof {
+  margin-top: 32px;
+  padding: 8px 0 8px 20px;
+  border-left: 2px solid var(--accent);
+  color: var(--ink-soft);
+  font-weight: 600;
+}
 
 /* Цифры набраны крупно и без подложек: тонкая линия сверху вместо
    карточки — так блок читается как раздел отчёта, а не как плитки. */
