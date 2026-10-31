@@ -240,7 +240,7 @@ router.get('/', asyncHandler(async (req, res) => {
     SEO_HOME_DESCRIPTION: escapeHtml(content.seo.home.description),
     HERO_EYEBROW: escapeHtml(content.hero.eyebrow),
     HERO_LINE1: escapeHtml(content.hero.line1),
-    HERO_LINE2: escapeHtml(content.hero.line2),
+    HERO_LINE2: escapeHtml(content.hero.line2 === 'пространства' ? 'пространства,' : content.hero.line2),
     HERO_LINE3: escapeHtml(content.hero.line3),
     HERO_LEAD: escapeHtml(content.hero.lead),
     HERO_PHOTO: escapeHtml(content.hero.photo),
@@ -256,7 +256,6 @@ router.get('/', asyncHandler(async (req, res) => {
     FOOTER_PHONE: escapeHtml(content.contacts.phone),
     FOOTER_PHONE_HREF: escapeHtml(content.contacts.phone.replace(/[^\d+]/g, '')),
     FOOTER_EMAIL: escapeHtml(content.contacts.email),
-    FOOTER_ADDRESS: escapeHtml(content.contacts.address),
     COPYRIGHT_YEAR: String(new Date().getFullYear()),
     VERIFICATION_META_HTML: renderVerificationMetaHtml(content),
     ANALYTICS_HEAD_HTML: renderAnalyticsHeadHtml(content)
@@ -282,7 +281,6 @@ router.get('/blog', asyncHandler(async (req, res) => {
     FOOTER_PHONE: escapeHtml(content.contacts.phone),
     FOOTER_PHONE_HREF: escapeHtml(content.contacts.phone.replace(/[^\d+]/g, '')),
     FOOTER_EMAIL: escapeHtml(content.contacts.email),
-    FOOTER_ADDRESS: escapeHtml(content.contacts.address),
     COPYRIGHT_YEAR: String(new Date().getFullYear()),
     VERIFICATION_META_HTML: renderVerificationMetaHtml(content),
     ANALYTICS_HEAD_HTML: renderAnalyticsHeadHtml(content)
@@ -312,7 +310,6 @@ router.get('/portfolio', asyncHandler(async (req, res) => {
     FOOTER_PHONE: escapeHtml(content.contacts.phone),
     FOOTER_PHONE_HREF: escapeHtml(content.contacts.phone.replace(/[^\d+]/g, '')),
     FOOTER_EMAIL: escapeHtml(content.contacts.email),
-    FOOTER_ADDRESS: escapeHtml(content.contacts.address),
     COPYRIGHT_YEAR: String(new Date().getFullYear()),
     VERIFICATION_META_HTML: renderVerificationMetaHtml(content),
     ANALYTICS_HEAD_HTML: renderAnalyticsHeadHtml(content)
@@ -505,10 +502,13 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
 
 <header class="navbar">
   <div class="wrap">
-    <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
-      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+    <a href="/" class="brand" aria-label="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА» — на главную">
+      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
     </a>
-    <nav class="nav-links" aria-label="Основная навигация">
+    <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
+      <span></span><span></span>
+    </button>
+    <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
       <a href="/portfolio">Портфолио</a>
       <a href="/blog">Блог</a>
@@ -546,13 +546,13 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
           <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
           <div class="brand-name">${SITE_NAME}</div>
         </div>
+        <p class="brand-descriptor">Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»</p>
         <p>${escapeHtml(content.contacts.tagline)}</p>
       </div>
       <div class="footer-col">
         <h4>Контакты</h4>
         <a href="tel:${escapeHtml(content.contacts.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(content.contacts.phone)}</a>
         <a href="mailto:${escapeHtml(content.contacts.email)}">${escapeHtml(content.contacts.email)}</a>
-        <p>${escapeHtml(content.contacts.address)}</p>
       </div>
       <div class="footer-col">
         <h4>Разделы</h4>
@@ -647,10 +647,13 @@ ${analyticsHeadHtml}
 
 <header class="navbar">
   <div class="wrap">
-    <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
-      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+    <a href="/" class="brand" aria-label="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА» — на главную">
+      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
     </a>
-    <nav class="nav-links" aria-label="Основная навигация">
+    <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
+      <span></span><span></span>
+    </button>
+    <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
       <a href="/portfolio">Портфолио</a>
       <a href="/blog">Блог</a>
@@ -688,13 +691,13 @@ ${analyticsHeadHtml}
           <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
           <div class="brand-name">${SITE_NAME}</div>
         </div>
+        <p class="brand-descriptor">Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»</p>
         <p>${escapeHtml(content.contacts.tagline)}</p>
       </div>
       <div class="footer-col">
         <h4>Контакты</h4>
         <a href="tel:${escapeHtml(content.contacts.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(content.contacts.phone)}</a>
         <a href="mailto:${escapeHtml(content.contacts.email)}">${escapeHtml(content.contacts.email)}</a>
-        <p>${escapeHtml(content.contacts.address)}</p>
       </div>
       <div class="footer-col">
         <h4>Разделы</h4>
@@ -805,10 +808,13 @@ ${analyticsHeadHtml}
 
 <header class="navbar">
   <div class="wrap">
-    <a href="/" class="brand" aria-label="Мастерская ЕКА — на главную">
-      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
+    <a href="/" class="brand" aria-label="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА» — на главную">
+      <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
     </a>
-    <nav class="nav-links" aria-label="Основная навигация">
+    <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
+      <span></span><span></span>
+    </button>
+    <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
       <a href="/portfolio">Портфолио</a>
       <a href="/blog">Блог</a>
@@ -845,13 +851,13 @@ ${analyticsHeadHtml}
           <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="89" height="34">
           <div class="brand-name">${SITE_NAME}</div>
         </div>
+        <p class="brand-descriptor">Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»</p>
         <p>${escapeHtml(content.contacts.tagline)}</p>
       </div>
       <div class="footer-col">
         <h4>Контакты</h4>
         <a href="tel:${escapeHtml(content.contacts.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(content.contacts.phone)}</a>
         <a href="mailto:${escapeHtml(content.contacts.email)}">${escapeHtml(content.contacts.email)}</a>
-        <p>${escapeHtml(content.contacts.address)}</p>
       </div>
       <div class="footer-col">
         <h4>Разделы</h4>
