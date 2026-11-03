@@ -25,6 +25,7 @@ window.addEventListener('resize', () => {
 });
 
 function onScroll() {
+  if (menuButton?.getAttribute('aria-expanded') === 'true') setMenuOpen(false);
   if (window.scrollY > 40) navbar.classList.add('scrolled');
   else navbar.classList.remove('scrolled');
 }
