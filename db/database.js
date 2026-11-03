@@ -168,16 +168,8 @@ const DEFAULT_SITE_CONTENT = {
     },
     robotsTxt: 'User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/'
   },
-  // Слоты под счётчики и подтверждение прав в вебмастерских — редактируются
-  // в «Настройки сайта». yandexMetrikaCode / googleAnalyticsCode — это
-  // готовый веб-код счётчика целиком (со <script> внутри), как его выдают
-  // Яндекс.Метрика и Google Analytics при создании счётчика — вставляется
-  // в <head> публичных страниц как есть. yandexVerification /
-  // googleVerification — только значение content для мета-тега
-  // подтверждения прав в Яндекс.Вебмастере и Google Search Console.
+  // Только значения meta-тегов для подтверждения прав в вебмастерах.
   analytics: {
-    yandexMetrikaCode: '',
-    googleAnalyticsCode: '',
     yandexVerification: '',
     googleVerification: ''
   }
@@ -272,22 +264,45 @@ async function initDb() {
     );
   `);
 
-  // Трекер посещений: одна строка на событие. type = 'visit' (открытие
-  // любой страницы сайта) или 'post_view' (открытие конкретного поста).
-  // visitor_id — случайный id из cookie, не привязан к личности, нужен
-  // только чтобы отличать уникальных посетителей от общего числа визитов.
+  // Только агрегированная статистика по дням: никакой истории действий,
+  // cookie или идентификаторов посетителей.
   await exec(`
-    CREATE TABLE IF NOT EXISTS analytics_events (
-      id SERIAL PRIMARY KEY,
-      type TEXT NOT NULL,
-      post_id TEXT,
-      path TEXT,
-      visitor_id TEXT,
-      created_at TEXT NOT NULL
+    CREATE TABLE IF NOT EXISTS analytics_daily (
+      day DATE NOT NULL,
+      kind TEXT NOT NULL,
+      post_id TEXT NOT NULL DEFAULT '',
+      views BIGINT NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, kind, post_id)
     );
   `);
-  await exec(`CREATE INDEX IF NOT EXISTS idx_analytics_type_created ON analytics_events(type, created_at);`);
-  await exec(`CREATE INDEX IF NOT EXISTS idx_analytics_post ON analytics_events(post_id);`);
+
+  // Переносим старую статистику в суточные суммы и удаляем журнал,
+  // содержавший постоянные visitor_id и точное время каждого просмотра.
+  const legacyAnalytics = await get(`SELECT to_regclass('analytics_events') AS table_name`);
+  if (legacyAnalytics && legacyAnalytics.table_name) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`
+        INSERT INTO analytics_daily (day, kind, post_id, views)
+        SELECT (created_at::timestamptz AT TIME ZONE 'UTC')::date,
+               CASE WHEN type = 'post_view' THEN 'post_view' ELSE 'visit' END,
+               CASE WHEN type = 'post_view' THEN COALESCE(post_id, '') ELSE '' END,
+               COUNT(*)
+        FROM analytics_events
+        GROUP BY 1, 2, 3
+        ON CONFLICT (day, kind, post_id)
+        DO UPDATE SET views = analytics_daily.views + EXCLUDED.views
+      `);
+      await client.query('DROP TABLE analytics_events');
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 
   const siteContentRow = await get('SELECT id FROM site_content WHERE id = 1');
   if (!siteContentRow) {
@@ -296,6 +311,25 @@ async function initDb() {
       JSON.stringify(DEFAULT_SITE_CONTENT),
       new Date().toISOString()
     );
+  }
+
+  // Удаляем ранее сохранённый код внешней аналитики из настроек сайта.
+  const savedContentRow = await get('SELECT data FROM site_content WHERE id = 1');
+  try {
+    const savedContent = JSON.parse(savedContentRow.data);
+    const analytics = savedContent.analytics || {};
+    if (analytics.yandexMetrikaCode || analytics.googleAnalyticsCode) {
+      delete analytics.yandexMetrikaCode;
+      delete analytics.googleAnalyticsCode;
+      savedContent.analytics = analytics;
+      await run(
+        'UPDATE site_content SET data = ?, updated_at = ? WHERE id = 1',
+        JSON.stringify(savedContent),
+        new Date().toISOString()
+      );
+    }
+  } catch (error) {
+    console.error('Не удалось очистить старые коды аналитики в настройках сайта:', error.message);
   }
 
   await ensureDefaultAuthor();
@@ -404,48 +438,44 @@ async function saveSiteContent(partialOrFull) {
 
 // ===== Трекер посещений =====
 
-// Записывает одно событие посещения. type: 'visit' | 'post_view'.
-async function logAnalyticsEvent({ type, postId = null, path = null, visitorId = null }) {
+// Увеличивает только дневной агрегат; не сохраняет путь, время запроса,
+// IP-адрес или идентификатор посетителя.
+async function incrementAnalyticsCounter({ kind, postId = '' }) {
+  if (!['visit', 'post_view'].includes(kind)) throw new Error('Unknown analytics counter');
+  const day = new Date().toISOString().slice(0, 10);
+  const key = kind === 'post_view' ? String(postId || '') : '';
   await run(
-    `INSERT INTO analytics_events (type, post_id, path, visitor_id, created_at) VALUES (?, ?, ?, ?, ?)`,
-    type, postId, path, visitorId, new Date().toISOString()
+    `INSERT INTO analytics_daily (day, kind, post_id, views) VALUES (?, ?, ?, 1)
+     ON CONFLICT (day, kind, post_id) DO UPDATE SET views = analytics_daily.views + 1`,
+    day, kind, key
   );
-}
-
-// Начало дня (00:00 локального времени сервера) N дней назад в виде ISO-строки —
-// используется и для «сегодня» (daysAgo=0), и для построения графика за неделю.
-function startOfDayIso(daysAgo) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString();
 }
 
 // Сводная статистика для карточек и мини-графика в разделе «Посты» админки.
 async function getAnalyticsSummary() {
-  const totalVisits = (await get(`SELECT COUNT(*) c FROM analytics_events WHERE type = 'visit'`)).c;
-  const totalPostViews = (await get(`SELECT COUNT(*) c FROM analytics_events WHERE type = 'post_view'`)).c;
-  const uniqueVisitors = (
-    await get(`SELECT COUNT(DISTINCT visitor_id) c FROM analytics_events WHERE type = 'visit' AND visitor_id IS NOT NULL`)
-  ).c;
+  const totalVisits = (await get(`SELECT COALESCE(SUM(views), 0) c FROM analytics_daily WHERE kind = 'visit'`)).c;
+  const totalPostViews = (await get(`SELECT COALESCE(SUM(views), 0) c FROM analytics_daily WHERE kind = 'post_view'`)).c;
+  const today = new Date().toISOString().slice(0, 10);
   const visitsToday = (
-    await get(`SELECT COUNT(*) c FROM analytics_events WHERE type = 'visit' AND created_at >= ?`, startOfDayIso(0))
+    await get(`SELECT COALESCE(SUM(views), 0) c FROM analytics_daily WHERE kind = 'visit' AND day = ?`, today)
   ).c;
 
   const last7Days = [];
   for (let i = 6; i >= 0; i--) {
-    const from = startOfDayIso(i);
-    const to = startOfDayIso(i - 1);
+    const from = new Date();
+    from.setUTCHours(0, 0, 0, 0);
+    from.setUTCDate(from.getUTCDate() - i);
+    const date = from.toISOString().slice(0, 10);
     const row = await get(
-      `SELECT COUNT(*) c FROM analytics_events WHERE type = 'visit' AND created_at >= ? AND created_at < ?`,
-      from, to
+      `SELECT COALESCE(SUM(views), 0) c FROM analytics_daily WHERE kind = 'visit' AND day = ?`,
+      date
     );
-    last7Days.push({ date: from.slice(0, 10), visits: row.c });
+    last7Days.push({ date, visits: row.c });
   }
 
   const topPostsRaw = await all(
-    `SELECT post_id, COUNT(*) as views FROM analytics_events
-     WHERE type = 'post_view' AND post_id IS NOT NULL
+    `SELECT post_id, SUM(views) as views FROM analytics_daily
+     WHERE kind = 'post_view' AND post_id <> ''
      GROUP BY post_id ORDER BY views DESC LIMIT 5`
   );
   const topPosts = [];
@@ -454,13 +484,13 @@ async function getAnalyticsSummary() {
     if (post) topPosts.push({ postId: r.post_id, views: r.views, title: post.title, slug: post.slug });
   }
 
-  return { totalVisits, totalPostViews, uniqueVisitors, visitsToday, last7Days, topPosts };
+  return { totalVisits, totalPostViews, visitsToday, last7Days, topPosts };
 }
 
 // Карта { postId: количество просмотров } — подмешивается к списку постов в админке.
 async function getPostViewCounts() {
   const rows = await all(
-    `SELECT post_id, COUNT(*) as views FROM analytics_events WHERE type = 'post_view' AND post_id IS NOT NULL GROUP BY post_id`
+    `SELECT post_id, SUM(views) as views FROM analytics_daily WHERE kind = 'post_view' AND post_id <> '' GROUP BY post_id`
   );
   const map = {};
   rows.forEach((r) => { map[r.post_id] = r.views; });
@@ -483,7 +513,7 @@ module.exports = {
   effectivePostStatus,
   isPostPublic,
   DEFAULT_SITE_CONTENT,
-  logAnalyticsEvent,
+  incrementAnalyticsCounter,
   getAnalyticsSummary,
   getPostViewCounts
 };

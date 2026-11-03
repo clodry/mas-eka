@@ -7,8 +7,6 @@
    намеренно — они задавали прежний «техно»-характер.
    ============================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-
 :root {
   /* Нейтральная светлая база: чуть тёплый серый вместо голубого —
      он не спорит с фотографией на первом экране. */
@@ -31,11 +29,10 @@
   --text-muted: #646b76;
   --text-faint: #9aa1ac;
 
-  --font-display: 'Manrope', 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  /* Моноширинный остался для админ-панели (поля с кодом счётчиков,
-     robots.txt). На публичных страницах он больше не используется. */
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: Arial, Helvetica, sans-serif;
+  --font-body: Arial, Helvetica, sans-serif;
+  /* Моноширинный шрифт используется для служебных полей админ-панели. */
+  --font-mono: Consolas, 'Courier New', monospace;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);

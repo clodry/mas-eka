@@ -6,7 +6,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 
-const { initDb, logAnalyticsEvent } = require('./db/database');
+const { initDb, incrementAnalyticsCounter } = require('./db/database');
 const authRouter = require('./routes/auth');
 const postsRouter = require('./routes/posts');
 const authorsRouter = require('./routes/authors');
@@ -15,8 +15,7 @@ const siteContentRouter = require('./routes/siteContent');
 const seoRouter = require('./routes/seo');
 const analyticsRouter = require('./routes/analytics');
 const verifyOrigin = require('./middleware/verifyOrigin');
-const { createCounter } = require('./middleware/rateLimit');
-const { getOrSetVisitorId, isTrackablePagePath } = require('./utils/analytics');
+const { isTrackablePagePath } = require('./utils/analytics');
 const { IS_PRODUCTION, COOKIE_SECURE, SESSION_COOKIE_NAME } = require('./utils/config');
 
 // ===== Проверка обязательных секретов при старте =====
@@ -63,10 +62,6 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 // ===== Базовые защитные заголовки =====
-// Content-Security-Policy намеренно не выставляется: на страницы вставляется
-// готовый код счётчиков (Яндекс.Метрика / GA) из настроек сайта, и строгая
-// политика его сломала бы. Если счётчики не используются — CSP имеет смысл
-// добавить именно здесь.
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -99,34 +94,19 @@ app.use(
 // Изменяющие данные запросы принимаем только со своих же страниц.
 app.use(verifyOrigin);
 
-// Потолок на число записываемых визитов с одного адреса. На выдачу страниц
-// не влияет — ограничивает только запись в базу, чтобы бот, обновляющий
-// главную в цикле, не наращивал таблицу посещений бесконечно.
-const visitCounter = createCounter({ windowMs: 15 * 60 * 1000, max: 200 });
-
-// Трекер посещений: считаем визитом любой GET на «страничный» адрес сайта
-// (не API, не админку, не статику). Событие пишем уже после ответа и только
-// если страница реально существует — иначе сканеры, перебирающие чужие
-// адреса вроде /wp-admin, накручивали бы статистику и раздували таблицу.
+// Дневная статистика агрегирована и не содержит историю по посетителям.
 app.use((req, res, next) => {
   if (req.method !== 'GET' || !isTrackablePagePath(req.path)) return next();
 
-  // Cookie посетителя нужно выставить до отправки заголовков, поэтому
-  // идентификатор получаем сразу, а само событие записываем после ответа.
-  let visitorId = null;
-  try {
-    visitorId = getOrSetVisitorId(req, res);
-  } catch (e) {
-    console.error('analytics: не удалось определить посетителя:', e.message);
+  // Удаляем прежнюю аналитику cookie у тех, кто посещал сайт раньше.
+  if (/(^|;\s*)eka_vid=/.test(req.headers.cookie || '')) {
+    res.clearCookie('eka_vid', { path: '/', httpOnly: true, sameSite: 'lax', secure: COOKIE_SECURE });
   }
 
   res.on('finish', () => {
     const delivered = (res.statusCode >= 200 && res.statusCode < 300) || res.statusCode === 304;
     if (!delivered) return;
-    if (!visitCounter.take(req.ip || 'unknown').allowed) return;
-    // logAnalyticsEvent теперь асинхронная (пишет в Postgres) — этот колбэк
-    // не может быть async, поэтому промис не ждём, а ловим ошибку в .catch().
-    logAnalyticsEvent({ type: 'visit', path: req.path, visitorId }).catch((e) => {
+    incrementAnalyticsCounter({ kind: 'visit' }).catch((e) => {
       console.error('analytics track error:', e.message);
     });
   });
