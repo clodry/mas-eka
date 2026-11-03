@@ -29,16 +29,6 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-// Код счётчиков (Яндекс.Метрика / Google Analytics) — это готовый веб-код
-// со <script> внутри, который админ копирует прямо из личного кабинета
-// счётчика. sanitizeHtml тут не подходит (вырежет <script>), поэтому просто
-// обрезаем длину и пробелы по краям — поле доступно только через
-// requireAuth, доверяем содержимому так же, как HTML-блокам статей.
-function codeSnippet(value, fallback, maxLength) {
-  if (value === undefined) return fallback;
-  return String(value).trim().slice(0, maxLength);
-}
-
 // Разбирает JSON-массив статистик/ценностей из формы админки; при ошибке
 // парсинга или отсутствии поля возвращает undefined — тогда mergeContent
 // в db/database.js подставит текущее сохранённое/дефолтное значение.
@@ -128,8 +118,6 @@ router.put('/', requireAuth, upload.single('heroPhoto'), asyncHandler(async (req
       }).slice(0, 4000)
     },
     analytics: {
-      yandexMetrikaCode: codeSnippet(body.analyticsYandexMetrika, current.analytics.yandexMetrikaCode, 6000),
-      googleAnalyticsCode: codeSnippet(body.analyticsGoogleAnalytics, current.analytics.googleAnalyticsCode, 6000),
       yandexVerification: plainText(body.analyticsYandexVerification, current.analytics.yandexVerification).slice(0, 200),
       googleVerification: plainText(body.analyticsGoogleVerification, current.analytics.googleVerification).slice(0, 200)
     }

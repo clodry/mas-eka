@@ -13,7 +13,6 @@ const previewBox = document.getElementById('previewBox');
 const statCards = document.getElementById('statCards');
 const analyticsChart = document.getElementById('analyticsChart');
 const analyticsTopPosts = document.getElementById('analyticsTopPosts');
-const analyticsUniqueVisitors = document.getElementById('analyticsUniqueVisitors');
 const postSearch = document.getElementById('postSearch');
 const dashSidebar = document.getElementById('dashSidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -738,9 +737,9 @@ function renderStats(posts, analytics) {
   const cards = [
     { label: 'Всего постов', value: total, foot: 'Опубликовано на сайте', icon: 'default' },
     {
-      label: 'Посещения сайта',
+      label: 'Просмотры страниц',
       value: totalVisits === null ? '—' : totalVisits,
-      foot: visitsToday === null ? 'Всего визитов' : `Сегодня: ${visitsToday}`,
+      foot: visitsToday === null ? 'Всего просмотров' : `Сегодня: ${visitsToday}`,
       icon: 'visits'
     },
     {
@@ -782,7 +781,6 @@ async function loadAnalytics(posts) {
     renderStats(posts, analytics);
     renderAnalyticsChart(analytics.last7Days || []);
     renderAnalyticsTopPosts(analytics.topPosts || []);
-    analyticsUniqueVisitors.textContent = `Уникальных посетителей: ${analytics.uniqueVisitors}`;
   } catch (err) {
     renderAnalyticsChart([]);
     analyticsTopPosts.innerHTML = '<p class="muted">Не удалось загрузить статистику.</p>';
@@ -795,7 +793,7 @@ function weekdayShort(dateStr) {
 
 function renderAnalyticsChart(days) {
   if (!days.length) {
-    analyticsChart.innerHTML = '<p class="muted">Пока нет данных о посещениях.</p>';
+    analyticsChart.innerHTML = '<p class="muted">Пока нет данных о просмотрах.</p>';
     return;
   }
   const max = Math.max(1, ...days.map((d) => d.visits));
@@ -1823,8 +1821,6 @@ async function loadSiteContent() {
       seoPortfolioDescription: content.seo.portfolio.description,
       seoPortfolioH1: content.seo.portfolio.h1,
       seoRobotsTxt: content.seo.robotsTxt,
-      analyticsYandexMetrika: content.analytics.yandexMetrikaCode,
-      analyticsGoogleAnalytics: content.analytics.googleAnalyticsCode,
       analyticsYandexVerification: content.analytics.yandexVerification,
       analyticsGoogleVerification: content.analytics.googleVerification
     };
@@ -1857,7 +1853,7 @@ siteContentForm.addEventListener('submit', async (e) => {
     'contactsTagline', 'contactsPhone', 'contactsEmail', 'contactsAddress',
     'seoHomeTitle', 'seoHomeDescription', 'seoBlogTitle', 'seoBlogDescription', 'seoBlogH1',
     'seoPortfolioTitle', 'seoPortfolioDescription', 'seoPortfolioH1', 'seoRobotsTxt',
-    'analyticsYandexMetrika', 'analyticsGoogleAnalytics', 'analyticsYandexVerification', 'analyticsGoogleVerification'
+    'analyticsYandexVerification', 'analyticsGoogleVerification'
   ].forEach((name) => fd.append(name, siteContentForm.elements[name].value));
   fd.append('stats', JSON.stringify(statsState));
   fd.append('values', JSON.stringify(valuesState));

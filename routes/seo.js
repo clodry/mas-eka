@@ -2,9 +2,8 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
-const { all, get, getSiteContent, logAnalyticsEvent, effectivePostStatus } = require('../db/database');
+const { all, get, getSiteContent, incrementAnalyticsCounter, effectivePostStatus } = require('../db/database');
 const { getSiteUrl, absoluteUrl } = require('../utils/siteUrl');
-const { getOrSetVisitorId } = require('../utils/analytics');
 const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
@@ -155,12 +154,11 @@ function renderVerificationMetaHtml(content) {
   return tags.join('\n');
 }
 
-// Готовый веб-код счётчиков (Яндекс.Метрика / Google Analytics) — вставляется
-// в <head> как есть, ровно тем кодом, который админ скопировал из личного
-// кабинета счётчика. Пусто, если поле не заполнено в настройках.
+// Оставлено пустым для совместимости с шаблонами и старой конфигурацией.
 function renderAnalyticsHeadHtml(content) {
-  const a = (content && content.analytics) || {};
-  return [a.yandexMetrikaCode, a.googleAnalyticsCode].filter(Boolean).join('\n');
+  // Внешние аналитические счётчики отключены: статистика считается локально
+  // и хранится только в виде дневных агрегатов.
+  return '';
 }
 
 function parseJsonArray(raw) {
@@ -393,8 +391,7 @@ router.get('/blog/:slug', asyncHandler(async (req, res) => {
   // поисковик) — считаем просмотром поста. Переходы по клику внутри блога
   // (без перезагрузки) считаются отдельно на клиенте через /api/analytics/view.
   try {
-    const visitorId = getOrSetVisitorId(req, res);
-    await logAnalyticsEvent({ type: 'post_view', postId: row.id, path: `/blog/${row.slug}`, visitorId });
+    await incrementAnalyticsCounter({ kind: 'post_view', postId: row.id });
   } catch (e) {
     console.error('analytics track error:', e.message);
   }
