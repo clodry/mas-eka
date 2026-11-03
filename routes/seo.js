@@ -163,20 +163,6 @@ function renderAnalyticsHeadHtml(content) {
   return [a.yandexMetrikaCode, a.googleAnalyticsCode].filter(Boolean).join('\n');
 }
 
-function renderValuesHtml(values) {
-  return (values || [])
-    .map(
-      (v) => `          <div class="value-row">
-            <div class="tag">${escapeHtml(v.tag)}</div>
-            <div>
-              <h3>${escapeHtml(v.title)}</h3>
-              <p>${escapeHtml(v.text)}</p>
-            </div>
-          </div>`
-    )
-    .join('\n');
-}
-
 function parseJsonArray(raw) {
   try {
     const v = JSON.parse(raw || '[]');
@@ -251,7 +237,6 @@ router.get('/', asyncHandler(async (req, res) => {
     ABOUT_P1: escapeHtml(content.about.p1),
     ABOUT_P2: escapeHtml(content.about.p2),
     STATS_HTML: renderStatsHtml(content.about.stats),
-    VALUES_HTML: renderValuesHtml(content.about.values),
     FOOTER_TAGLINE: escapeHtml(content.contacts.tagline),
     FOOTER_PHONE: escapeHtml(content.contacts.phone),
     FOOTER_PHONE_HREF: escapeHtml(content.contacts.phone.replace(/[^\d+]/g, '')),
@@ -506,7 +491,7 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
     </a>
     <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
-      <span></span><span></span>
+      <span></span><span></span><span></span>
     </button>
     <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
@@ -651,7 +636,7 @@ ${analyticsHeadHtml}
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
     </a>
     <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
-      <span></span><span></span>
+      <span></span><span></span><span></span>
     </button>
     <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
@@ -812,7 +797,7 @@ ${analyticsHeadHtml}
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
     </a>
     <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
-      <span></span><span></span>
+      <span></span><span></span><span></span>
     </button>
     <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
