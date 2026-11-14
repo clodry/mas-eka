@@ -12,68 +12,53 @@
 <body class="admin-body">
 
 <div id="adminScreen" class="admin-screen" hidden>
-  <div class="dash-layout" id="dashLayout">
+  <div class="dash-layout">
 
     <aside class="dash-sidebar" id="dashSidebar">
       <div class="dash-brand">
         <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="ЕКА" width="73" height="28">
-        <span class="dash-brand-name dash-label-text">Мастерская ЕКА</span>
-        <button type="button" class="dash-collapse-btn" id="sidebarCollapseToggle" title="Свернуть меню" aria-label="Свернуть меню">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
-        </button>
+        <span class="dash-brand-name">Мастерская ЕКА</span>
       </div>
 
-      <nav class="dash-nav">
-        <div class="dash-nav-label dash-label-text">Меню</div>
-        <div class="dash-nav-group">
-          <button type="button" class="dash-nav-parent" id="dashboardsToggle" aria-expanded="true" title="Dashboards">
-            <span class="dash-nav-parent-left">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              <span class="dash-label-text">Dashboards</span>
-            </span>
-            <svg class="dash-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      <nav class="dash-nav" aria-label="Разделы админ-панели">
+        <div class="dash-nav-label">Разделы</div>
+        <div class="dash-nav-children">
+          <button type="button" class="dash-nav-child" data-page="new-post">
+            <span class="dash-dot"></span><span>Новый пост</span>
           </button>
-          <div class="dash-nav-children" id="dashboardsChildren">
-            <button type="button" class="dash-nav-child" data-page="new-post" title="Новый пост">
-              <span class="dash-dot"></span><span class="dash-label-text">Новый пост</span>
-            </button>
-            <button type="button" class="dash-nav-child active" data-page="posts" title="Посты">
-              <span class="dash-dot"></span><span class="dash-label-text">Посты</span>
-            </button>
-            <button type="button" class="dash-nav-child" data-page="authors" title="Авторы">
-              <span class="dash-dot"></span><span class="dash-label-text">Авторы</span>
-            </button>
-            <button type="button" class="dash-nav-child" data-page="portfolio" title="Портфолио">
-              <span class="dash-dot"></span><span class="dash-label-text">Портфолио</span>
-            </button>
-            <button type="button" class="dash-nav-child" data-page="site-settings" title="Настройки сайта">
-              <span class="dash-dot"></span><span class="dash-label-text">Настройки сайта</span>
-            </button>
-          </div>
+          <button type="button" class="dash-nav-child active" data-page="posts">
+            <span class="dash-dot"></span><span>Посты</span>
+          </button>
+          <button type="button" class="dash-nav-child" data-page="authors">
+            <span class="dash-dot"></span><span>Авторы</span>
+          </button>
+          <button type="button" class="dash-nav-child" data-page="portfolio">
+            <span class="dash-dot"></span><span>Портфолио</span>
+          </button>
+          <button type="button" class="dash-nav-child" data-page="site-settings">
+            <span class="dash-dot"></span><span>Настройки сайта</span>
+          </button>
         </div>
       </nav>
 
       <div class="dash-sidebar-footer">
         <a href="/blog" class="dash-side-link" target="_blank" title="Открыть блог">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          <span class="dash-label-text">Открыть блог ↗</span>
+          <span>Открыть блог ↗</span>
         </a>
-        <button id="logoutBtn" class="dash-side-link dash-side-link-danger" type="button" title="Выйти">
+        <button id="logoutBtn" class="dash-side-link dash-side-link-danger" type="button">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span class="dash-label-text">Выйти</span>
+          <span>Выйти</span>
         </button>
       </div>
     </aside>
 
     <div class="dash-main">
       <header class="dash-topbar">
-        <button type="button" class="dash-burger" id="sidebarToggle" aria-label="Меню">
+        <button type="button" class="dash-burger" id="sidebarToggle" aria-label="Открыть меню разделов" aria-expanded="false" aria-controls="dashSidebar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <div class="dash-search">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="postSearch" placeholder="Поиск по постам...">
-        </div>
+        <span class="dash-topbar-title" id="dashTopbarTitle">Посты</span>
         <div class="dash-topbar-right">
           <span class="dash-user-badge">Админ</span>
         </div>
@@ -101,18 +86,32 @@
 
           <div class="admin-list">
             <div class="panel-head"><h2>Все посты</h2></div>
+            <div class="posts-list-toolbar">
+              <label class="dash-search" for="postSearch">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="postSearch" aria-label="Поиск по заголовку и анонсу" placeholder="Поиск по постам…">
+              </label>
+              <label class="post-status-filter">
+                <span class="visually-hidden">Фильтр по статусу</span>
+                <select id="postStatusFilter" aria-label="Фильтр постов по статусу">
+                  <option value="all">Все статусы</option>
+                  <option value="published">Опубликованные</option>
+                  <option value="draft">Черновики</option>
+                  <option value="scheduled">Отложенные</option>
+                </select>
+              </label>
+            </div>
             <div id="postsList" class="posts-table"></div>
           </div>
         </section>
 
         <section id="page-new-post" class="dash-page" hidden>
-          <h1 class="dash-page-title" id="formTitle">Новый пост</h1>
+          <div class="dash-page-heading">
+            <h1 class="dash-page-title" id="formTitle">Новый пост</h1>
+            <button id="resetFormBtn" class="btn btn-ghost" type="button" hidden>Отменить редактирование</button>
+          </div>
 
           <div class="admin-panel">
-            <div class="panel-head">
-              <span></span>
-              <button id="resetFormBtn" class="btn btn-ghost" type="button" hidden>Отменить редактирование</button>
-            </div>
             <form id="postForm" class="post-form">
               <input type="hidden" name="id" value="">
               <label>Заголовок
@@ -136,13 +135,13 @@
                 <datalist id="tagSuggestions"></datalist>
               </label>
 
-              <h2 class="settings-subhead">Экспертность (E-E-A-T)</h2>
+              <h2 class="settings-subhead">Автор статьи</h2>
               <div class="author-field">
                 <label>Автор статьи
                   <select name="authorId" id="authorSelect"></select>
                 </label>
                 <a href="#" id="authorProfileLink" class="author-profile-link" target="_blank" rel="noopener" hidden>Мини-профиль автора ↗</a>
-                <span class="blocks-hint">Поисковики доверяют статьям с реальным подтверждённым автором. Управлять списком авторов — в разделе «Авторы».</span>
+                <span class="blocks-hint">Выберите автора. Описание и фото профиля редактируются в разделе «Авторы».</span>
               </div>
 
               <h2 class="settings-subhead">SEO страницы</h2>
@@ -292,8 +291,8 @@
                   <span>Галерея</span>
                   <span class="blocks-hint">Дополнительные фото проекта — выводятся на странице проекта после описания.</span>
                 </div>
-                <div id="projectGalleryBox" class="preview-box-filled" style="display:flex; flex-wrap:wrap; gap:12px;"></div>
-                <label class="file-label" style="margin-top:12px; display:inline-block;">
+                <div id="projectGalleryBox" class="project-gallery-box"></div>
+                <label class="file-label project-gallery-upload">
                   + Добавить фото в галерею
                   <input type="file" accept="image/*" id="projectGalleryFileInput" multiple>
                 </label>
