@@ -14,12 +14,10 @@ const statCards = document.getElementById('statCards');
 const analyticsChart = document.getElementById('analyticsChart');
 const analyticsTopPosts = document.getElementById('analyticsTopPosts');
 const postSearch = document.getElementById('postSearch');
+const postStatusFilter = document.getElementById('postStatusFilter');
 const dashSidebar = document.getElementById('dashSidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
-const dashLayout = document.getElementById('dashLayout');
-const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
-const dashboardsToggle = document.getElementById('dashboardsToggle');
-const dashboardsChildren = document.getElementById('dashboardsChildren');
+const dashTopbarTitle = document.getElementById('dashTopbarTitle');
 const previewPostBtn = document.getElementById('previewPostBtn');
 const previewModal = document.getElementById('previewModal');
 const previewArticle = document.getElementById('previewArticle');
@@ -626,6 +624,15 @@ function goToPage(page, { updateUrl = true, url } = {}) {
     btn.classList.toggle('active', btn.dataset.page === page);
   });
   dashSidebar.classList.remove('open');
+  sidebarToggle.setAttribute('aria-expanded', 'false');
+  const pageLabels = {
+    posts: 'Посты',
+    'new-post': 'Новый пост',
+    authors: 'Авторы',
+    portfolio: 'Портфолио',
+    'site-settings': 'Настройки сайта'
+  };
+  dashTopbarTitle.textContent = pageLabels[page] || 'Панель управления';
 
   if (updateUrl) {
     const target = url || PAGE_TO_URL[page] || '/admin/posts';
@@ -661,20 +668,14 @@ window.addEventListener('popstate', () => {
   goToPage(pageFromUrl(), { updateUrl: false });
 });
 
-dashboardsToggle.addEventListener('click', () => {
-  const expanded = dashboardsToggle.getAttribute('aria-expanded') === 'true';
-  dashboardsToggle.setAttribute('aria-expanded', String(!expanded));
-  dashboardsChildren.hidden = expanded;
+sidebarToggle.addEventListener('click', () => {
+  const isOpen = dashSidebar.classList.toggle('open');
+  sidebarToggle.setAttribute('aria-expanded', String(isOpen));
 });
-
-sidebarToggle.addEventListener('click', () => dashSidebar.classList.toggle('open'));
-
-// ===== Сворачивание сайдбара (десктоп). По умолчанию сайдбар всегда развёрнут
-// — состояние не сохраняется, при каждой загрузке страницы он раскрыт. =====
-sidebarCollapseToggle.addEventListener('click', () => {
-  const collapsed = dashLayout.classList.toggle('sidebar-collapsed');
-  sidebarCollapseToggle.title = collapsed ? 'Развернуть меню' : 'Свернуть меню';
-  sidebarCollapseToggle.setAttribute('aria-label', sidebarCollapseToggle.title);
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  dashSidebar.classList.remove('open');
+  sidebarToggle.setAttribute('aria-expanded', 'false');
 });
 
 // ===== Проверка сессии при загрузке =====
@@ -803,7 +804,7 @@ function renderAnalyticsChart(days) {
       return `
       <div class="analytics-bar-col" title="${formatDate(d.date)}: ${d.visits}">
         <div class="analytics-bar-value">${d.visits}</div>
-        <div class="analytics-bar" style="height:${Math.max(heightPct, d.visits ? 6 : 2)}%"></div>
+        <div class="analytics-bar" style="--bar-height:${Math.max(heightPct, d.visits ? 6 : 2)}%"></div>
         <div class="analytics-bar-label">${weekdayShort(d.date)}</div>
       </div>`;
     })
@@ -844,7 +845,7 @@ function statusBadgeHtml(post) {
 
 function renderPostsTable(posts) {
   if (!posts.length) {
-    postsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Ничего не найдено.</p>';
+    postsList.innerHTML = '<p class="admin-state-message">Ничего не найдено по выбранным условиям.</p>';
     return;
   }
   postsList.innerHTML = posts
@@ -895,17 +896,21 @@ function renderPostsTable(posts) {
 
 function applySearchFilter() {
   const q = postSearch.value.trim().toLowerCase();
+  const status = postStatusFilter.value;
   const all = window.__allPosts || [];
-  const filtered = q
-    ? all.filter((p) => p.title.toLowerCase().includes(q) || p.excerpt.toLowerCase().includes(q))
-    : all;
+  const filtered = all.filter((post) => {
+    const text = `${post.title || ''} ${post.excerpt || ''}`.toLowerCase();
+    const visibleStatus = post.effectiveStatus || post.status || 'published';
+    return (!q || text.includes(q)) && (status === 'all' || visibleStatus === status);
+  });
   renderPostsTable(filtered);
 }
 
 postSearch.addEventListener('input', applySearchFilter);
+postStatusFilter.addEventListener('change', applySearchFilter);
 
 async function loadPosts() {
-  postsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Загрузка…</p>';
+  postsList.innerHTML = '<p class="admin-state-message" role="status">Загрузка постов…</p>';
   try {
     const res = await fetch('/api/posts');
     const posts = await res.json();
@@ -913,12 +918,12 @@ async function loadPosts() {
     renderStats(posts, null);
     loadAnalytics(posts);
     if (!posts.length) {
-      postsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Пока нет постов — создайте первый через раздел «Новый пост».</p>';
+      postsList.innerHTML = '<p class="admin-state-message">Пока нет постов. Создайте первую запись в разделе «Новый пост».</p>';
       return;
     }
     applySearchFilter();
   } catch (err) {
-    postsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Не удалось загрузить посты.</p>';
+    postsList.innerHTML = '<p class="admin-state-message is-error" role="alert">Не удалось загрузить посты. Обновите страницу и попробуйте ещё раз.</p>';
   }
 
   // Подсказки тегов при вводе — не блокируем основную загрузку постов, если упадёт
@@ -1047,7 +1052,7 @@ function buildPreviewArticleHtml() {
     <span class="preview-article-date">${dateStr}</span>
     <h1>${escapeHtml(title)}</h1>
     <div class="preview-article-content">
-      ${blocksHtml || '<p style="color:var(--text-faint)">Пока нет контента для отображения — добавьте абзацы или фото.</p>'}
+      ${blocksHtml || '<p class="preview-content-empty">Пока нет контента для отображения — добавьте абзацы или фото.</p>'}
     </div>
   `;
 }
@@ -1091,7 +1096,7 @@ function buildArticleHtmlFromPost(post) {
     <span class="preview-article-date">${dateStr}</span>
     <h1>${escapeHtml(post.title)}</h1>
     <div class="preview-article-content">
-      ${blocksHtml || '<p style="color:var(--text-faint)">У этого поста пока нет содержимого.</p>'}
+      ${blocksHtml || '<p class="preview-content-empty">У этого поста пока нет содержимого.</p>'}
     </div>
   `;
 }
@@ -1297,7 +1302,7 @@ let authorsAdminState = [];
 
 function renderAuthorsTable(authors) {
   if (!authors.length) {
-    authorsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Пока нет авторов.</p>';
+    authorsList.innerHTML = '<p class="admin-state-message">Пока нет авторов.</p>';
     return;
   }
   authorsList.innerHTML = authors
@@ -1328,13 +1333,13 @@ function renderAuthorsTable(authors) {
 }
 
 async function loadAuthors() {
-  authorsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Загрузка…</p>';
+  authorsList.innerHTML = '<p class="admin-state-message" role="status">Загрузка авторов…</p>';
   try {
     const res = await fetch('/api/authors');
     authorsAdminState = await res.json();
     renderAuthorsTable(authorsAdminState);
   } catch (err) {
-    authorsList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Не удалось загрузить авторов.</p>';
+    authorsList.innerHTML = '<p class="admin-state-message is-error" role="alert">Не удалось загрузить авторов. Обновите страницу и попробуйте ещё раз.</p>';
   }
 }
 
@@ -1484,22 +1489,22 @@ function renderProjectCoverBox() {
 function renderProjectGalleryBox() {
   const keptThumbs = projectGalleryState.keptUrls.map(
     (url, i) => `
-    <div class="preview-thumb" style="width:96px; height:96px; position:relative;" data-kept-index="${i}">
-      <img src="${url}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-sm);">
-      <button type="button" class="icon-btn remove-gallery-kept" data-index="${i}" title="Убрать" style="position:absolute; top:4px; right:4px;">✕</button>
+    <div class="preview-thumb gallery-thumb" data-kept-index="${i}">
+      <img class="gallery-thumb-image" src="${url}" alt="">
+      <button type="button" class="icon-btn gallery-thumb-remove remove-gallery-kept" data-index="${i}" title="Убрать фото">✕</button>
     </div>`
   );
   const newThumbs = projectGalleryState.newFiles.map(
     (file, i) => `
-    <div class="preview-thumb" style="width:96px; height:96px; position:relative;" data-new-index="${i}">
-      <img src="${URL.createObjectURL(file)}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-sm);">
-      <button type="button" class="icon-btn remove-gallery-new" data-index="${i}" title="Убрать" style="position:absolute; top:4px; right:4px;">✕</button>
+    <div class="preview-thumb gallery-thumb" data-new-index="${i}">
+      <img class="gallery-thumb-image" src="${URL.createObjectURL(file)}" alt="">
+      <button type="button" class="icon-btn gallery-thumb-remove remove-gallery-new" data-index="${i}" title="Убрать фото">✕</button>
     </div>`
   );
 
   projectGalleryBox.innerHTML =
     keptThumbs.join('') + newThumbs.join('') ||
-    '<span style="color:var(--text-muted); font-size:13.5px;">Фото галереи ещё не добавлены</span>';
+    '<span class="gallery-empty">Фото галереи ещё не добавлены</span>';
 
   projectGalleryBox.querySelectorAll('.remove-gallery-kept').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1529,7 +1534,7 @@ function statusBadgeHtmlFor(status) {
 
 function renderPortfolioTable(projects) {
   if (!projects.length) {
-    portfolioAdminList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Пока нет проектов.</p>';
+    portfolioAdminList.innerHTML = '<p class="admin-state-message">Пока нет проектов.</p>';
     return;
   }
   portfolioAdminList.innerHTML = projects
@@ -1560,7 +1565,7 @@ function renderPortfolioTable(projects) {
 }
 
 async function loadPortfolio() {
-  portfolioAdminList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Загрузка…</p>';
+  portfolioAdminList.innerHTML = '<p class="admin-state-message" role="status">Загрузка проектов…</p>';
   try {
     const res = await fetch('/api/portfolio');
     portfolioAdminState = await res.json();
@@ -1573,7 +1578,7 @@ async function loadPortfolio() {
       })
       .catch(() => {});
   } catch (err) {
-    portfolioAdminList.innerHTML = '<p style="color:var(--text-muted); padding:12px;">Не удалось загрузить проекты.</p>';
+    portfolioAdminList.innerHTML = '<p class="admin-state-message is-error" role="alert">Не удалось загрузить проекты. Обновите страницу и попробуйте ещё раз.</p>';
   }
 }
 
