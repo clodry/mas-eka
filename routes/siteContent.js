@@ -1,21 +1,11 @@
 const express = require('express');
-const multer = require('multer');
 const sanitizeHtml = require('sanitize-html');
 
 const { getSiteContent, saveSiteContent } = require('../db/database');
 const requireAuth = require('../middleware/requireAuth');
 const asyncHandler = require('../utils/asyncHandler');
-const { ensureUploadDirs, imageStorage, imageFileFilter, removeUploadedFile } = require('../utils/uploads');
 
 const router = express.Router();
-
-ensureUploadDirs();
-
-const upload = multer({
-  storage: multer.diskStorage(imageStorage()),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-  fileFilter: imageFileFilter
-});
 
 // Все текстовые поля пропускаем через sanitize-html с пустым списком
 // разрешённых тегов — это просто текст, HTML тут не нужен и небезопасен.
@@ -49,12 +39,11 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/site-content — обновить контент главной страницы (только админ)
-router.put('/', requireAuth, upload.single('heroPhoto'), asyncHandler(async (req, res) => {
+router.put('/', requireAuth, asyncHandler(async (req, res) => {
   const body = req.body || {};
   const current = await getSiteContent();
 
   const stats = parseJsonArray(body.stats);
-  const values = parseJsonArray(body.values);
 
   const next = {
     hero: {
@@ -63,8 +52,8 @@ router.put('/', requireAuth, upload.single('heroPhoto'), asyncHandler(async (req
       line2: plainText(body.heroLine2, current.hero.line2),
       line3: plainText(body.heroLine3, current.hero.line3),
       lead: plainText(body.heroLead, current.hero.lead),
-      photo: req.file ? `/uploads/${req.file.filename}` : current.hero.photo,
-      photoAlt: plainText(body.heroPhotoAlt, current.hero.photoAlt)
+      photo: current.hero.photo,
+      photoAlt: current.hero.photoAlt
     },
     about: {
       eyebrow: plainText(body.aboutEyebrow, current.about.eyebrow),
@@ -79,15 +68,7 @@ router.put('/', requireAuth, upload.single('heroPhoto'), asyncHandler(async (req
           suffix: plainText(s.suffix, '').slice(0, 4),
           label: plainText(s.label, '').slice(0, 60)
         }))
-        .filter((s) => s.label),
-      values: (values || current.about.values)
-        .slice(0, 6)
-        .map((v) => ({
-          tag: plainText(v.tag, '').slice(0, 24).toUpperCase(),
-          title: plainText(v.title, '').slice(0, 80),
-          text: plainText(v.text, '').slice(0, 200)
-        }))
-        .filter((v) => v.title)
+        .filter((s) => s.label)
     },
     contacts: {
       tagline: plainText(body.contactsTagline, current.contacts.tagline),
@@ -122,13 +103,6 @@ router.put('/', requireAuth, upload.single('heroPhoto'), asyncHandler(async (req
       googleVerification: plainText(body.analyticsGoogleVerification, current.analytics.googleVerification).slice(0, 200)
     }
   };
-
-  // Если загружено новое фото героя — старое (если это был файл из /uploads,
-  // а не картинка по умолчанию) больше не используется где-либо ещё, поэтому
-  // безопасно удаляем его с диска.
-  if (req.file) {
-    removeUploadedFile(current.hero.photo);
-  }
 
   const saved = await saveSiteContent(next);
   res.json(saved);
