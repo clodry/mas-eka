@@ -43,8 +43,7 @@
 
       <div class="dash-sidebar-footer">
         <a href="/blog" class="dash-side-link" target="_blank" title="Открыть блог">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          <span>Открыть блог ↗</span>
+          <span>Открыть блог</span>
         </a>
         <button id="logoutBtn" class="dash-side-link dash-side-link-danger" type="button">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -169,14 +168,14 @@
                   <span class="blocks-hint">Стройте статью из абзацев и фото в любом порядке.</span>
                 </div>
                 <div id="blocksEditor" class="blocks-editor"></div>
-                <div class="blocks-add-row">
-                  <button type="button" id="addParagraphBtn" class="btn btn-ghost">+ Абзац текста</button>
-                  <button type="button" id="addImageBtn" class="btn btn-ghost">+ Фото</button>
-                </div>
               </div>
 
               <div id="formError" class="error-msg" hidden></div>
               <div class="form-actions">
+                <div class="blocks-add-row">
+                  <button type="button" id="addParagraphBtn" class="btn btn-ghost">+ Абзац текста</button>
+                  <button type="button" id="addImageBtn" class="btn btn-ghost">+ Фото</button>
+                </div>
                 <button type="button" id="previewPostBtn" class="btn btn-ghost">Превью поста</button>
                 <button type="submit" name="statusAction" value="draft" class="btn btn-ghost">Черновик</button>
                 <button type="button" id="openScheduleModalBtn" class="btn btn-ghost">Отложенная публикация</button>
