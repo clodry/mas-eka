@@ -861,6 +861,7 @@
 
 .form-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; align-items: stretch; }
 .form-actions .btn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
+.form-actions .blocks-add-row { margin: 0 auto 0 0; }
 
 /* ===== Модальное окно превью поста ===== */
 .modal-overlay {
@@ -1005,7 +1006,7 @@
 .preview-radio input:disabled + * { opacity: 0.5; }
 
 .blocks-add-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-.blocks-add-row .btn { font-size: 13px; padding: 9px 16px; }
+.blocks-add-row .btn { min-height: 48px; font-size: 13px; padding: 9px 16px; }
 
 @media (max-width: 520px) {
   .block-image-body { grid-template-columns: 72px 1fr; }
@@ -1071,6 +1072,9 @@
   .panel-head { flex-wrap: wrap; row-gap: 6px; margin-bottom: 14px; }
   .dash-user-badge { display: none; }
   .modal-box { border-radius: 14px; }
+  .form-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .form-actions .blocks-add-row { grid-column: 1 / -1; margin: 0; }
+  .form-actions > .btn { width: 100%; min-width: 0; white-space: normal; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
