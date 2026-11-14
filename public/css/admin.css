@@ -696,10 +696,9 @@
   background: var(--bg-primary);
 }
 .repeat-row input { margin: 0 !important; }
-.repeat-row.values-row { grid-template-columns: 1fr 1.4fr 2fr auto; }
 .repeat-row .icon-btn { align-self: center; }
 @media (max-width: 720px) {
-  .repeat-row, .repeat-row.values-row { grid-template-columns: 1fr; }
+  .repeat-row { grid-template-columns: 1fr; }
 }
 
 /* ===== Блочный редактор поста ===== */
@@ -860,7 +859,8 @@
 .rte-editable a { color: var(--accent); text-decoration: underline; }
 .rte-editable ul, .rte-editable ol { margin: 8px 0; padding-left: 22px; }
 
-.form-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.form-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; align-items: stretch; }
+.form-actions .btn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
 
 /* ===== Модальное окно превью поста ===== */
 .modal-overlay {
@@ -1004,7 +1004,7 @@
 .preview-radio input { width: auto; margin: 0; }
 .preview-radio input:disabled + * { opacity: 0.5; }
 
-.blocks-add-row { display: flex; gap: 10px; margin-top: 12px; }
+.blocks-add-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
 .blocks-add-row .btn { font-size: 13px; padding: 9px 16px; }
 
 @media (max-width: 520px) {

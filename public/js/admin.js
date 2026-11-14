@@ -63,11 +63,8 @@ const projectTagSuggestions = document.getElementById('projectTagSuggestions');
 const siteContentForm = document.getElementById('siteContentForm');
 const siteContentError = document.getElementById('siteContentError');
 const siteContentSuccess = document.getElementById('siteContentSuccess');
-const heroPhotoBox = document.getElementById('heroPhotoBox');
 const statsEditor = document.getElementById('statsEditor');
-const valuesEditor = document.getElementById('valuesEditor');
 const addStatBtn = document.getElementById('addStatBtn');
-const addValueBtn = document.getElementById('addValueBtn');
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -1694,45 +1691,7 @@ renderProjectGalleryBox();
 
 // ===== Настройки сайта (герой / о нас / контакты) =====
 let siteContentState = null;
-let heroPhotoState = { file: null, existingSrc: null };
 let statsState = [];
-let valuesState = [];
-
-function renderHeroPhotoBox() {
-  const url = heroPhotoState.file ? URL.createObjectURL(heroPhotoState.file) : heroPhotoState.existingSrc;
-
-  if (!url) {
-    heroPhotoBox.innerHTML = `
-      <div class="preview-box-empty">
-        <span>Фото не выбрано</span>
-        <label class="file-label">
-          Выбрать фото
-          <input type="file" accept="image/*" id="heroPhotoFileInput">
-        </label>
-      </div>`;
-  } else {
-    heroPhotoBox.innerHTML = `
-      <div class="preview-box-filled">
-        <div class="preview-thumb"><img src="${url}" alt=""></div>
-        <div class="preview-actions">
-          <label class="file-label">
-            Заменить фото
-            <input type="file" accept="image/*" id="heroPhotoFileInput">
-          </label>
-        </div>
-      </div>`;
-  }
-
-  const fileInput = document.getElementById('heroPhotoFileInput');
-  if (fileInput) {
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      heroPhotoState = { file, existingSrc: heroPhotoState.existingSrc };
-      renderHeroPhotoBox();
-    });
-  }
-}
 
 function renderStatsEditor() {
   if (!statsState.length) {
@@ -1760,39 +1719,9 @@ function renderStatsEditor() {
   }));
 }
 
-function renderValuesEditor() {
-  if (!valuesState.length) {
-    valuesEditor.innerHTML = '<p class="blocks-empty">Пока нет ни одной карточки ценностей.</p>';
-    return;
-  }
-  valuesEditor.innerHTML = valuesState
-    .map(
-      (v, i) => `
-    <div class="repeat-row values-row" data-i="${i}">
-      <input type="text" class="value-tag-input" data-i="${i}" placeholder="Метка, напр. СРОКИ" value="${escapeHtml(v.tag || '')}">
-      <input type="text" class="value-title-input" data-i="${i}" placeholder="Заголовок" value="${escapeHtml(v.title || '')}">
-      <input type="text" class="value-text-input" data-i="${i}" placeholder="Текст" value="${escapeHtml(v.text || '')}">
-      <button type="button" class="icon-btn remove-value" data-i="${i}" title="Удалить">✕</button>
-    </div>`
-    )
-    .join('');
-
-  valuesEditor.querySelectorAll('.value-tag-input').forEach((el) => el.addEventListener('input', () => { valuesState[Number(el.dataset.i)].tag = el.value; }));
-  valuesEditor.querySelectorAll('.value-title-input').forEach((el) => el.addEventListener('input', () => { valuesState[Number(el.dataset.i)].title = el.value; }));
-  valuesEditor.querySelectorAll('.value-text-input').forEach((el) => el.addEventListener('input', () => { valuesState[Number(el.dataset.i)].text = el.value; }));
-  valuesEditor.querySelectorAll('.remove-value').forEach((el) => el.addEventListener('click', () => {
-    valuesState.splice(Number(el.dataset.i), 1);
-    renderValuesEditor();
-  }));
-}
-
 addStatBtn.addEventListener('click', () => {
   statsState.push({ value: 0, suffix: '', label: '' });
   renderStatsEditor();
-});
-addValueBtn.addEventListener('click', () => {
-  valuesState.push({ tag: '', title: '', text: '' });
-  renderValuesEditor();
 });
 
 async function loadSiteContent() {
@@ -1807,7 +1736,6 @@ async function loadSiteContent() {
       heroLine2: content.hero.line2,
       heroLine3: content.hero.line3,
       heroLead: content.hero.lead,
-      heroPhotoAlt: content.hero.photoAlt,
       aboutEyebrow: content.about.eyebrow,
       aboutTitle: content.about.title,
       aboutDesc: content.about.desc,
@@ -1833,13 +1761,8 @@ async function loadSiteContent() {
       if (siteContentForm.elements[name]) siteContentForm.elements[name].value = value || '';
     });
 
-    heroPhotoState = { file: null, existingSrc: content.hero.photo };
     statsState = (content.about.stats || []).map((s) => ({ ...s }));
-    valuesState = (content.about.values || []).map((v) => ({ ...v }));
-
-    renderHeroPhotoBox();
     renderStatsEditor();
-    renderValuesEditor();
   } catch (err) {
     siteContentError.textContent = 'Не удалось загрузить настройки сайта';
     siteContentError.hidden = false;
@@ -1853,7 +1776,7 @@ siteContentForm.addEventListener('submit', async (e) => {
 
   const fd = new FormData();
   [
-    'heroEyebrow', 'heroLine1', 'heroLine2', 'heroLine3', 'heroLead', 'heroPhotoAlt',
+    'heroEyebrow', 'heroLine1', 'heroLine2', 'heroLine3', 'heroLead',
     'aboutEyebrow', 'aboutTitle', 'aboutDesc', 'aboutP1', 'aboutP2',
     'contactsTagline', 'contactsPhone', 'contactsEmail', 'contactsAddress',
     'seoHomeTitle', 'seoHomeDescription', 'seoBlogTitle', 'seoBlogDescription', 'seoBlogH1',
@@ -1861,8 +1784,6 @@ siteContentForm.addEventListener('submit', async (e) => {
     'analyticsYandexVerification', 'analyticsGoogleVerification'
   ].forEach((name) => fd.append(name, siteContentForm.elements[name].value));
   fd.append('stats', JSON.stringify(statsState));
-  fd.append('values', JSON.stringify(valuesState));
-  if (heroPhotoState.file) fd.append('heroPhoto', heroPhotoState.file);
 
   try {
     const res = await fetch('/api/site-content', { method: 'PUT', body: fd });
@@ -1873,12 +1794,8 @@ siteContentForm.addEventListener('submit', async (e) => {
       return;
     }
     siteContentState = data;
-    heroPhotoState = { file: null, existingSrc: data.hero.photo };
     statsState = (data.about.stats || []).map((s) => ({ ...s }));
-    valuesState = (data.about.values || []).map((v) => ({ ...v }));
-    renderHeroPhotoBox();
     renderStatsEditor();
-    renderValuesEditor();
     siteContentSuccess.hidden = false;
     setTimeout(() => { siteContentSuccess.hidden = true; }, 3000);
   } catch (err) {
