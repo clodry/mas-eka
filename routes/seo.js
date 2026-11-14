@@ -486,6 +486,7 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
   <div class="wrap">
     <a href="/" class="brand" aria-label="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА» — на главную">
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
+      <span class="brand-tagline">Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»</span>
     </a>
     <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
       <span></span><span></span><span></span>
@@ -631,6 +632,7 @@ ${analyticsHeadHtml}
   <div class="wrap">
     <a href="/" class="brand" aria-label="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА» — на главную">
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
+      <span class="brand-tagline">Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»</span>
     </a>
     <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
       <span></span><span></span><span></span>
@@ -792,6 +794,7 @@ ${analyticsHeadHtml}
   <div class="wrap">
     <a href="/" class="brand" aria-label="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА» — на главную">
       <img class="brand-logo" src="/images/brand/logo-mark-blue.png" alt="Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»" width="89" height="34">
+      <span class="brand-tagline">Мастерская пространственного планирования, дизайна и архитектуры «ЕКА»</span>
     </a>
     <button class="nav-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="primary-navigation">
       <span></span><span></span><span></span>
