@@ -1774,7 +1774,7 @@ siteContentForm.addEventListener('submit', async (e) => {
   siteContentError.hidden = true;
   siteContentSuccess.hidden = true;
 
-  const fd = new FormData();
+  const fd = new URLSearchParams();
   [
     'heroEyebrow', 'heroLine1', 'heroLine2', 'heroLine3', 'heroLead',
     'aboutEyebrow', 'aboutTitle', 'aboutDesc', 'aboutP1', 'aboutP2',
