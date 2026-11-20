@@ -631,6 +631,12 @@ footer {
   .stat-grid { grid-template-columns: 1fr; gap: 0; }
 }
 
+@media (max-width: 720px) {
+  .hero-copy { margin-inline: auto; text-align: center; }
+  .hero p.lead { margin-right: auto; margin-left: auto; }
+  .hero-actions { justify-content: center; }
+}
+
 /* Низкие окна: при min-height:100svh контент героя перестаёт помещаться */
 @media (max-height: 700px) and (min-width: 901px) {
   .hero { padding-top: 116px; }
