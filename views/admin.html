@@ -90,15 +90,24 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="search" id="postSearch" aria-label="Поиск по заголовку и анонсу" placeholder="Поиск по постам…">
               </label>
-              <label class="post-status-filter">
-                <span class="visually-hidden">Фильтр по статусу</span>
-                <select id="postStatusFilter" aria-label="Фильтр постов по статусу">
+              <div class="post-status-filter" id="postStatusDropdown">
+                <select id="postStatusFilter" class="visually-hidden" tabindex="-1" aria-hidden="true">
                   <option value="all">Все статусы</option>
                   <option value="published">Опубликованные</option>
                   <option value="draft">Черновики</option>
                   <option value="scheduled">Отложенные</option>
                 </select>
-              </label>
+                <button type="button" class="status-filter-trigger" id="postStatusTrigger" aria-label="Фильтр постов по статусу" aria-haspopup="listbox" aria-expanded="false" aria-controls="postStatusMenu">
+                  <span id="postStatusLabel">Все статусы</span>
+                  <svg class="status-filter-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="status-filter-menu" id="postStatusMenu" role="listbox" aria-label="Статус поста" hidden>
+                  <button type="button" class="status-filter-option is-selected" role="option" aria-selected="true" data-value="all">Все статусы</button>
+                  <button type="button" class="status-filter-option" role="option" aria-selected="false" data-value="published">Опубликованные</button>
+                  <button type="button" class="status-filter-option" role="option" aria-selected="false" data-value="draft">Черновики</button>
+                  <button type="button" class="status-filter-option" role="option" aria-selected="false" data-value="scheduled">Отложенные</button>
+                </div>
+              </div>
             </div>
             <div id="postsList" class="posts-table"></div>
           </div>
@@ -172,6 +181,7 @@
 
               <div id="formError" class="error-msg" hidden></div>
               <div class="form-actions">
+                <span id="postAutosaveStatus" class="post-autosave-status" role="status" aria-live="polite" hidden></span>
                 <div class="blocks-add-row">
                   <button type="button" id="addParagraphBtn" class="btn btn-ghost">+ Абзац текста</button>
                   <button type="button" id="addImageBtn" class="btn btn-ghost">+ Фото</button>

@@ -4,6 +4,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 const postForm = document.getElementById('postForm');
 const formTitle = document.getElementById('formTitle');
 const formError = document.getElementById('formError');
+const postAutosaveStatus = document.getElementById('postAutosaveStatus');
 const resetFormBtn = document.getElementById('resetFormBtn');
 const postsList = document.getElementById('postsList');
 const blocksEditor = document.getElementById('blocksEditor');
@@ -15,6 +16,10 @@ const analyticsChart = document.getElementById('analyticsChart');
 const analyticsTopPosts = document.getElementById('analyticsTopPosts');
 const postSearch = document.getElementById('postSearch');
 const postStatusFilter = document.getElementById('postStatusFilter');
+const postStatusDropdown = document.getElementById('postStatusDropdown');
+const postStatusTrigger = document.getElementById('postStatusTrigger');
+const postStatusLabel = document.getElementById('postStatusLabel');
+const postStatusMenu = document.getElementById('postStatusMenu');
 const dashSidebar = document.getElementById('dashSidebar');
 const sidebarToggle = document.getElementById('sidebarToggle');
 const dashTopbarTitle = document.getElementById('dashTopbarTitle');
@@ -103,6 +108,7 @@ function clientSlugify(text) {
 // подстраивается под заголовок. Как только slug тронут руками — авто-подстройка
 // выключается, чтобы не затирать ручную правку.
 let slugTouchedByUser = false;
+let editingPostStatus = null;
 if (slugInput) {
   slugInput.addEventListener('input', () => {
     slugTouchedByUser = slugInput.value.trim().length > 0;
@@ -252,6 +258,7 @@ function setPreviewFromBlock(blockId) {
   previewState = { mode: 'block', blockId, file: null, existingSrc: null };
   renderPreviewBox();
   renderBlocks();
+  scheduleDraftAutosave();
 }
 
 // ===== Пользовательские шрифты в статье =====
@@ -358,6 +365,7 @@ async function handleFontUpload(blockId, file) {
     fontsState.push(data);
     injectFontFace(data);
     applyInlineStyleToSelection(blockId, 'fontFamily', `"${data.family}"`);
+    scheduleDraftAutosave();
   } catch (err) {
     alert('Ошибка соединения с сервером');
   }
@@ -409,9 +417,9 @@ function renderBlocks() {
       const moveDown = i < blocksState.length - 1;
       const controls = `
         <div class="block-controls">
-          <button type="button" class="icon-btn move-up" data-id="${block.id}" ${moveUp ? '' : 'disabled'} title="Переместить вверх">&#11014;</button>
-          <button type="button" class="icon-btn move-down" data-id="${block.id}" ${moveDown ? '' : 'disabled'} title="Переместить вниз">&#11015;</button>
-          <button type="button" class="icon-btn remove-block" data-id="${block.id}" title="Удалить">✕</button>
+          <button type="button" class="icon-btn move-up" data-tooltip="Переместить вверх" aria-label="Переместить вверх" data-id="${block.id}" ${moveUp ? '' : 'disabled'}>&#11014;</button>
+          <button type="button" class="icon-btn move-down" data-tooltip="Переместить вниз" aria-label="Переместить вниз" data-id="${block.id}" ${moveDown ? '' : 'disabled'}>&#11015;</button>
+          <button type="button" class="icon-btn remove-block" data-tooltip="Удалить блок" aria-label="Удалить блок" data-id="${block.id}">✕</button>
         </div>`;
 
       if (block.type === 'paragraph') {
@@ -422,12 +430,12 @@ function renderBlocks() {
             ${controls}
           </div>
           <div class="rte-toolbar">
-            ${RTE_BUTTONS.map((b) => `<button type="button" class="rte-btn" data-cmd="${b.cmd}" data-id="${block.id}" title="${b.title}">${b.label}</button>`).join('')}
-            <select class="rte-size-select" data-id="${block.id}" title="Размер текста">
+            ${RTE_BUTTONS.map((b) => `<button type="button" class="rte-btn" data-tooltip="${b.title}" aria-label="${b.title}" data-cmd="${b.cmd}" data-id="${block.id}">${b.label}</button>`).join('')}
+            <select class="rte-size-select" data-tooltip="Размер текста" aria-label="Размер текста" data-id="${block.id}">
               <option value="">Размер…</option>
               ${FONT_SIZE_OPTIONS.map((s) => `<option value="${s}px">${s}px</option>`).join('')}
             </select>
-            <label class="rte-font-upload" title="Загрузить свой шрифт и применить к выделению">
+            <label class="rte-font-upload" data-tooltip="Загрузить свой шрифт и применить к выделению">
               + Шрифт
               <input type="file" accept=".ttf,.otf,.woff,.woff2" class="rte-font-input" data-id="${block.id}">
             </label>
@@ -540,6 +548,7 @@ function moveBlock(id, dir) {
   if (i < 0 || j < 0 || j >= blocksState.length) return;
   [blocksState[i], blocksState[j]] = [blocksState[j], blocksState[i]];
   renderBlocks();
+  scheduleDraftAutosave();
 }
 
 function removeBlock(id) {
@@ -549,16 +558,19 @@ function removeBlock(id) {
     renderPreviewBox();
   }
   renderBlocks();
+  scheduleDraftAutosave();
 }
 
 addParagraphBtn.addEventListener('click', () => {
   blocksState.push(newParagraphBlock(''));
   renderBlocks();
+  scheduleDraftAutosave();
 });
 
 addImageBtn.addEventListener('click', () => {
   blocksState.push(newImageBlock());
   renderBlocks();
+  scheduleDraftAutosave();
 });
 
 // ===== Навигация дашборда (Новый пост / Посты / Настройки) =====
@@ -906,6 +918,63 @@ function applySearchFilter() {
 postSearch.addEventListener('input', applySearchFilter);
 postStatusFilter.addEventListener('change', applySearchFilter);
 
+function setStatusMenuOpen(open, focusSelected = false) {
+  postStatusMenu.hidden = !open;
+  postStatusDropdown.classList.toggle('is-open', open);
+  postStatusTrigger.setAttribute('aria-expanded', String(open));
+  if (open && focusSelected) {
+    const selected = postStatusMenu.querySelector(`[data-value="${postStatusFilter.value}"]`);
+    if (selected) selected.focus();
+  }
+}
+
+function selectPostStatus(option) {
+  postStatusFilter.value = option.dataset.value;
+  postStatusLabel.textContent = option.textContent;
+  postStatusMenu.querySelectorAll('.status-filter-option').forEach((item) => {
+    const selected = item === option;
+    item.classList.toggle('is-selected', selected);
+    item.setAttribute('aria-selected', String(selected));
+  });
+  setStatusMenuOpen(false);
+  postStatusTrigger.focus();
+  postStatusFilter.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+postStatusTrigger.addEventListener('click', () => {
+  setStatusMenuOpen(postStatusMenu.hidden, postStatusMenu.hidden);
+});
+postStatusMenu.querySelectorAll('.status-filter-option').forEach((option) => {
+  option.addEventListener('click', () => selectPostStatus(option));
+  option.addEventListener('keydown', (event) => {
+    const options = [...postStatusMenu.querySelectorAll('.status-filter-option')];
+    const index = options.indexOf(option);
+    let nextIndex = null;
+    if (event.key === 'ArrowDown') nextIndex = (index + 1) % options.length;
+    else if (event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = options.length - 1;
+    else if (event.key === 'Escape') {
+      event.preventDefault();
+      setStatusMenuOpen(false);
+      postStatusTrigger.focus();
+    }
+    if (nextIndex !== null) {
+      event.preventDefault();
+      options[nextIndex].focus();
+    }
+  });
+});
+document.addEventListener('click', (event) => {
+  if (!postStatusDropdown.contains(event.target)) setStatusMenuOpen(false);
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !postStatusMenu.hidden) {
+    setStatusMenuOpen(false);
+    postStatusTrigger.focus();
+  }
+});
+
 async function loadPosts() {
   postsList.innerHTML = '<p class="admin-state-message" role="status">Загрузка постов…</p>';
   try {
@@ -935,6 +1004,9 @@ async function loadPosts() {
 
 // ===== Редактирование =====
 function startEdit(id, { updateUrl = true } = {}) {
+  if (draftAutosaveTimer) clearTimeout(draftAutosaveTimer);
+  draftAutosaveQueued = false;
+  draftChangeVersion += 1;
   const post = (window.__allPosts || []).find((p) => String(p.id) === String(id));
   if (!post) {
     if (!updateUrl) {
@@ -946,7 +1018,8 @@ function startEdit(id, { updateUrl = true } = {}) {
   }
 
   postForm.elements.id.value = post.id;
-  postForm.elements.title.value = post.title;
+  editingPostStatus = post.status || 'published';
+  postForm.elements.title.value = post.title === 'Черновик без названия' ? '' : post.title;
   postForm.elements.excerpt.value = post.excerpt;
   postForm.elements.tags.value = (post.tags || []).join(', ');
   if (slugInput) {
@@ -992,8 +1065,10 @@ function startEdit(id, { updateUrl = true } = {}) {
 
   renderBlocks();
   renderPreviewBox();
+  lastAutosavedFingerprint = draftFingerprint();
 
-  formTitle.textContent = `Редактирование: ${post.title}`;
+  formTitle.textContent = `Редактирование: ${post.title === 'Черновик без названия' ? 'Черновик без названия' : post.title}`;
+  postAutosaveStatus.hidden = true;
   resetFormBtn.hidden = false;
   formError.hidden = true;
   goToPage('new-post', { updateUrl, url: editUrlForPost(post.id) });
@@ -1006,6 +1081,12 @@ resetFormBtn.addEventListener('click', () => {
 });
 
 function resetForm() {
+  if (draftAutosaveTimer) clearTimeout(draftAutosaveTimer);
+  draftAutosaveQueued = false;
+  draftChangeVersion += 1;
+  lastAutosavedFingerprint = '';
+  editingPostStatus = null;
+  postAutosaveStatus.hidden = true;
   postForm.reset();
   postForm.elements.id.value = '';
   slugTouchedByUser = false;
@@ -1125,8 +1206,122 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ===== Создание / сохранение =====
-async function savePost(status) {
-  formError.hidden = true;
+let draftAutosaveTimer = null;
+let draftAutosavePromise = null;
+let draftAutosaveQueued = false;
+let manualPostSaveInProgress = false;
+let draftChangeVersion = 0;
+let lastAutosavedFingerprint = '';
+
+function draftFingerprint() {
+  const fileFingerprint = (file) => file ? `${file.name}:${file.size}:${file.lastModified}` : '';
+  return JSON.stringify({
+    title: postForm.elements.title.value,
+    excerpt: postForm.elements.excerpt.value,
+    tags: postForm.elements.tags.value,
+    slug: slugInput ? slugInput.value : '',
+    seoTitle: postForm.elements.seoTitle.value,
+    seoDescription: postForm.elements.seoDescription.value,
+    h1: postForm.elements.h1.value,
+    blocks: blocksState.map((block) => block.type === 'paragraph'
+      ? { type: block.type, html: block.html || '' }
+      : { type: block.type, src: block.existingSrc || '', caption: block.caption || '', file: fileFingerprint(block.file) }),
+    preview: { mode: previewState.mode, src: previewState.existingSrc || '', file: fileFingerprint(previewState.file), blockId: previewState.blockId || '' },
+    fonts: fontsState.map((font) => ({ family: font.family, url: font.url, file: fileFingerprint(font.file) }))
+  });
+}
+
+function hasDraftContent() {
+  const fields = ['title', 'excerpt', 'tags', 'seoTitle', 'seoDescription', 'h1'];
+  if (fields.some((name) => String(postForm.elements[name].value || '').trim())) return true;
+  const hasText = blocksState.some((block) => {
+    if (block.type !== 'paragraph') return false;
+    const text = document.createElement('div');
+    text.innerHTML = block.html || '';
+    return !!text.textContent.trim();
+  });
+  const hasImage = blocksState.some((block) => block.type === 'image' && (block.file || block.existingSrc));
+  return hasText || hasImage || !!previewState.file || !!previewState.existingSrc;
+}
+
+function canAutosaveDraft() {
+  const hasId = !!postForm.elements.id.value;
+  return hasId ? editingPostStatus === 'draft' : hasDraftContent();
+}
+
+function setAutosaveMessage(message) {
+  postAutosaveStatus.textContent = message;
+  postAutosaveStatus.hidden = !message;
+}
+
+function scheduleDraftAutosave() {
+  draftChangeVersion += 1;
+  if (draftAutosaveTimer) clearTimeout(draftAutosaveTimer);
+  if (manualPostSaveInProgress || !canAutosaveDraft()) return;
+  setAutosaveMessage('Есть несохранённые изменения');
+  draftAutosaveTimer = setTimeout(runDraftAutosave, 1100);
+}
+
+function adoptUploadedDraftMedia(post) {
+  const persistedBlocks = (post.blocks || []).slice();
+  blocksState.forEach((block) => {
+    const hasContent = block.type === 'paragraph'
+      ? !!(block.html || '').replace(/<[^>]*>/g, '').trim()
+      : !!(block.file || block.existingSrc);
+    if (!hasContent) return;
+    const saved = persistedBlocks.shift();
+    if (!saved || saved.type !== block.type) return;
+    if (block.type === 'paragraph') block.html = saved.html || '';
+    else {
+      block.file = null;
+      block.existingSrc = saved.src;
+      block.previewUrl = saved.src;
+      block.caption = saved.caption || '';
+    }
+  });
+  if (previewState.mode === 'own' && previewState.file && post.previewImage) {
+    previewState.file = null;
+    previewState.existingSrc = post.previewImage;
+  }
+}
+
+async function runDraftAutosave() {
+  draftAutosaveTimer = null;
+  if (manualPostSaveInProgress) return;
+  if (!canAutosaveDraft() || draftFingerprint() === lastAutosavedFingerprint) return;
+  if (draftAutosavePromise) {
+    draftAutosaveQueued = true;
+    return;
+  }
+
+  const version = draftChangeVersion;
+  setAutosaveMessage('Сохраняем черновик…');
+  draftAutosavePromise = savePost('draft', { autosave: true, version });
+  const saved = await draftAutosavePromise;
+  draftAutosavePromise = null;
+
+  if (saved) {
+    if (version === draftChangeVersion) {
+      lastAutosavedFingerprint = draftFingerprint();
+      setAutosaveMessage('Черновик сохранён');
+    } else {
+      draftAutosaveQueued = true;
+      setAutosaveMessage('Сохраняем последние изменения…');
+    }
+  } else {
+    setAutosaveMessage('Не удалось сохранить — повторим при следующем изменении');
+  }
+
+  if (draftAutosaveQueued && !manualPostSaveInProgress) {
+    draftAutosaveQueued = false;
+    if (canAutosaveDraft() && draftFingerprint() !== lastAutosavedFingerprint) {
+      draftAutosaveTimer = setTimeout(runDraftAutosave, 350);
+    }
+  }
+}
+
+async function savePost(status, { autosave = false, version = draftChangeVersion } = {}) {
+  if (!autosave) formError.hidden = true;
 
   const id = postForm.elements.id.value;
   const formData = new FormData();
@@ -1138,6 +1333,7 @@ async function savePost(status) {
   formData.append('seoDescription', postForm.elements.seoDescription.value);
   formData.append('h1', postForm.elements.h1.value);
   formData.append('status', status);
+  if (autosave) formData.append('autosave', '1');
   if (status === 'scheduled') {
     // datetime-local -> ISO (сервер сам проверит, что дата в будущем)
     const localValue = publishedAtInput.value;
@@ -1174,25 +1370,48 @@ async function savePost(status) {
     });
     const data = await res.json();
     if (!res.ok) {
-      formError.textContent = data.error || 'Не удалось сохранить пост';
-      formError.hidden = false;
+      if (!autosave) {
+        formError.textContent = data.error || 'Не удалось сохранить пост';
+        formError.hidden = false;
+      }
       return false;
+    }
+    if (autosave) {
+      postForm.elements.id.value = data.id;
+      editingPostStatus = 'draft';
+      if (version === draftChangeVersion) adoptUploadedDraftMedia(data);
+      if (!id) loadPosts();
+      return true;
     }
     resetForm();
     loadPosts();
     goToPage('posts');
     return true;
   } catch (err) {
-    formError.textContent = 'Ошибка соединения с сервером';
-    formError.hidden = false;
+    if (!autosave) {
+      formError.textContent = 'Ошибка соединения с сервером';
+      formError.hidden = false;
+    }
     return false;
   }
 }
 
+postForm.addEventListener('input', scheduleDraftAutosave);
+postForm.addEventListener('change', scheduleDraftAutosave);
 postForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  manualPostSaveInProgress = true;
+  draftAutosaveQueued = false;
+  if (draftAutosaveTimer) clearTimeout(draftAutosaveTimer);
+  if (draftAutosavePromise) await draftAutosavePromise;
   const status = e.submitter && e.submitter.name === 'statusAction' ? e.submitter.value : 'published';
-  savePost(status);
+  try {
+    await savePost(status);
+  } finally {
+    manualPostSaveInProgress = false;
+    draftAutosaveQueued = false;
+    if (canAutosaveDraft() && draftFingerprint() !== lastAutosavedFingerprint) scheduleDraftAutosave();
+  }
 });
 
 // ===== Модалка «Отложенная публикация» =====

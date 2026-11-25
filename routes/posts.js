@@ -398,15 +398,17 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 
 // POST /api/posts — создать пост (только админ)
 router.post('/', requireAuth, upload.any(), asyncHandler(async (req, res) => {
-  const { title, excerpt } = req.body;
+  const isDraftAutosave = req.body.status === 'draft' && req.body.autosave === '1';
+  const title = String(req.body.title || '').trim();
+  const excerpt = String(req.body.excerpt || '').trim();
 
-  if (!title || !excerpt) {
+  if (!isDraftAutosave && (!title || !excerpt)) {
     return res.status(400).json({ error: 'Заполните заголовок и анонс поста' });
   }
 
   const { blocks, idToSrc } = buildBlocks(req.body.blocks, req.files);
 
-  if (!blocks.length) {
+  if (!blocks.length && !isDraftAutosave) {
     return res.status(400).json({ error: 'Добавьте хотя бы один абзац текста или фото' });
   }
 
@@ -424,14 +426,15 @@ router.post('/', requireAuth, upload.any(), asyncHandler(async (req, res) => {
   }
 
   const isTaken = async (s) => !!(await get('SELECT 1 FROM posts WHERE slug = ?', s));
-  const slug = await resolveSlug({ title, requestedSlug: req.body.slug, isTaken });
+  const savedTitle = title || 'Черновик без названия';
+  const slug = await resolveSlug({ title: savedTitle, requestedSlug: req.body.slug, isTaken });
   const id = await generateUniquePostId();
   const now = new Date().toISOString();
 
   await run(
     `INSERT INTO posts (id, title, slug, excerpt, content_blocks, preview_image, tags, custom_fonts, seo_title, seo_description, h1, status, published_at, author_id, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    id, title, slug, excerpt, JSON.stringify(blocks), previewImage, JSON.stringify(tags), JSON.stringify(customFonts),
+    id, savedTitle, slug, excerpt, JSON.stringify(blocks), previewImage, JSON.stringify(tags), JSON.stringify(customFonts),
     seoTitle, seoDescription, h1, statusFields.status, statusFields.publishedAt, authorId, now, now
   );
 
@@ -445,12 +448,17 @@ router.put('/:id', requireAuth, upload.any(), asyncHandler(async (req, res) => {
   const existing = await get('SELECT * FROM posts WHERE id = ?', req.params.id);
   if (!existing) return res.status(404).json({ error: 'Пост не найден' });
 
-  const { title, excerpt } = req.body;
+  const isDraftAutosave = req.body.status === 'draft' && req.body.autosave === '1';
+  const title = String(req.body.title || '').trim();
+  const excerpt = String(req.body.excerpt || '').trim();
+  if (!isDraftAutosave && (!title && !existing.title || !excerpt && !existing.excerpt)) {
+    return res.status(400).json({ error: 'Заполните заголовок и анонс поста' });
+  }
   const now = new Date().toISOString();
 
   const { blocks, idToSrc } = buildBlocks(req.body.blocks, req.files);
 
-  if (!blocks.length) {
+  if (!blocks.length && !isDraftAutosave) {
     return res.status(400).json({ error: 'Добавьте хотя бы один абзац текста или фото' });
   }
 
@@ -497,17 +505,18 @@ router.put('/:id', requireAuth, upload.any(), asyncHandler(async (req, res) => {
   }
 
   const isTaken = async (s) => !!(await get('SELECT 1 FROM posts WHERE slug = ? AND id != ?', s, req.params.id));
+  const savedTitle = isDraftAutosave ? title || 'Черновик без названия' : title || existing.title || 'Черновик без названия';
   const slug =
     req.body.slug !== undefined
-      ? await resolveSlug({ title: title || existing.title, requestedSlug: req.body.slug, isTaken })
+      ? await resolveSlug({ title: savedTitle, requestedSlug: req.body.slug, isTaken })
       : existing.slug;
 
   await run(
     `UPDATE posts SET title = ?, slug = ?, excerpt = ?, content_blocks = ?, preview_image = ?, tags = ?, custom_fonts = ?, seo_title = ?, seo_description = ?, h1 = ?, status = ?, published_at = ?, author_id = ?, updated_at = ?
      WHERE id = ?`,
-    title || existing.title,
+    savedTitle,
     slug,
-    excerpt || existing.excerpt,
+    isDraftAutosave ? excerpt : excerpt || existing.excerpt,
     JSON.stringify(blocks),
     previewImage,
     JSON.stringify(tags),
