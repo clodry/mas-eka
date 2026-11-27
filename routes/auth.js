@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const createRateLimit = require('../middleware/rateLimit');
 const { SESSION_COOKIE_NAME, COOKIE_SECURE } = require('../utils/config');
@@ -18,7 +19,9 @@ const loginRateLimit = createRateLimit({
 // Хэш-заглушка: если логин не совпал, bcrypt.compare всё равно выполняется —
 // иначе ответ при неверном логине приходил бы заметно быстрее, чем при верном
 // логине и неверном пароле, и по времени ответа логин можно было бы подобрать.
-const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-constant-time-compare', 10);
+const configuredRounds = Number((process.env.ADMIN_PASSWORD_HASH || '').match(/^\$2[aby]\$(\d{2})\$/)?.[1]);
+const dummyRounds = Number.isInteger(configuredRounds) ? Math.min(14, Math.max(10, configuredRounds)) : 10;
+const DUMMY_HASH = bcrypt.hashSync('dummy-password-for-constant-time-compare', dummyRounds);
 
 router.post('/login', loginRateLimit, async (req, res, next) => {
   try {
@@ -31,6 +34,10 @@ router.post('/login', loginRateLimit, async (req, res, next) => {
       return res.status(500).json({
         error: 'Пароль администратора не настроен. Задайте ADMIN_PASSWORD_HASH в .env (см. README).'
       });
+    }
+
+    if (!login || login.length > 80 || !password || Buffer.byteLength(password, 'utf8') > 72) {
+      return res.status(400).json({ error: 'Проверьте логин и пароль' });
     }
 
     const loginOk = login === validLogin;
@@ -74,6 +81,15 @@ router.post('/logout', (req, res) => {
     res.clearCookie(SESSION_COOKIE_NAME);
     res.json({ ok: true });
   });
+});
+
+router.get('/csrf', (req, res) => {
+  if (!req.session || !req.session.isAdmin) {
+    return res.status(401).json({ error: 'Требуется авторизация' });
+  }
+  if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ token: req.session.csrfToken });
 });
 
 router.get('/status', (req, res) => {

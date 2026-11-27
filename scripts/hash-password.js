@@ -9,7 +9,7 @@ if (!password) {
   process.exit(1);
 }
 
-const hash = bcrypt.hashSync(password, 10);
+const hash = bcrypt.hashSync(password, 12);
 console.log('\nВставьте эту строку в .env как ADMIN_PASSWORD_HASH:\n');
 console.log(hash);
 console.log('');

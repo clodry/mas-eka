@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { Pool, types } = require('pg');
+const { IS_PRODUCTION } = require('../utils/config');
 
 // COUNT(*)/SUM(...) приходят из Postgres как BIGINT (OID 20) — pg возвращает
 // их строкой, чтобы не терять точность на числах больше 2^53. В этом проекте
@@ -16,7 +17,7 @@ const pool = new Pool({
 
 pool.on('error', (err) => {
   // Ошибки на простаивающих соединениях пула не должны ронять процесс.
-  console.error('Postgres pool error:', err.message);
+  console.error(IS_PRODUCTION ? 'Ошибка соединения с PostgreSQL.' : `Postgres pool error: ${err.message}`);
 });
 
 // Переводит SQL с плейсхолдерами '?' (стиль better-sqlite3) в позиционные
@@ -324,7 +325,11 @@ async function initDb() {
       );
     }
   } catch (error) {
-    console.error('Не удалось очистить старые коды аналитики в настройках сайта:', error.message);
+    console.error(
+      IS_PRODUCTION
+        ? 'Не удалось очистить старые коды аналитики в настройках сайта.'
+        : `Не удалось очистить старые коды аналитики в настройках сайта: ${error.message}`
+    );
   }
 
   await ensureDefaultAuthor();

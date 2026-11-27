@@ -1,5 +1,35 @@
 const adminScreen = document.getElementById('adminScreen');
 const logoutBtn = document.getElementById('logoutBtn');
+const ADMIN_BASE = document.body.dataset.adminBase;
+
+// Все изменяющие запросы админки отправляются с синхронизирующим CSRF-токеном.
+const rawFetch = window.fetch.bind(window);
+let csrfTokenPromise;
+async function getCsrfToken() {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = rawFetch('/api/auth/csrf', { credentials: 'same-origin' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Сессия истекла. Войдите в админку ещё раз.');
+        const data = await res.json();
+        return data.token;
+      })
+      .catch((error) => {
+        csrfTokenPromise = null;
+        throw error;
+      });
+  }
+  return csrfTokenPromise;
+}
+window.fetch = async (input, init = {}) => {
+  const requestUrl = new URL(typeof input === 'string' ? input : input.url, window.location.href);
+  const method = String(init.method || (typeof input === 'string' ? 'GET' : input.method) || 'GET').toUpperCase();
+  if (requestUrl.origin !== window.location.origin || !requestUrl.pathname.startsWith('/api/') || ['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    return rawFetch(input, init);
+  }
+  const headers = new Headers(init.headers || (typeof input === 'string' ? undefined : input.headers));
+  headers.set('X-CSRF-Token', await getCsrfToken());
+  return rawFetch(input, { ...init, headers, credentials: 'same-origin' });
+};
 
 const postForm = document.getElementById('postForm');
 const formTitle = document.getElementById('formTitle');
@@ -576,31 +606,31 @@ addImageBtn.addEventListener('click', () => {
 // ===== Навигация дашборда (Новый пост / Посты / Настройки) =====
 // Соответствие внутренних имён разделов и адресов в браузере.
 const PAGE_TO_URL = {
-  'new-post': '/admin/newpost',
-  'posts': '/admin/posts',
-  'authors': '/admin/authors',
-  'portfolio': '/admin/portfolio',
-  'site-settings': '/admin/settings'
+  'new-post': `${ADMIN_BASE}/newpost`,
+  'posts': `${ADMIN_BASE}/posts`,
+  'authors': `${ADMIN_BASE}/authors`,
+  'portfolio': `${ADMIN_BASE}/portfolio`,
+  'site-settings': `${ADMIN_BASE}/settings`
 };
 const URL_TO_PAGE = {
-  '/admin': 'posts',
-  '/admin/': 'posts',
-  '/admin/newpost': 'new-post',
-  '/admin/posts': 'posts',
-  '/admin/authors': 'authors',
-  '/admin/portfolio': 'portfolio',
-  '/admin/settings': 'site-settings'
+  [ADMIN_BASE]: 'posts',
+  [`${ADMIN_BASE}/`]: 'posts',
+  [`${ADMIN_BASE}/newpost`]: 'new-post',
+  [`${ADMIN_BASE}/posts`]: 'posts',
+  [`${ADMIN_BASE}/authors`]: 'authors',
+  [`${ADMIN_BASE}/portfolio`]: 'portfolio',
+  [`${ADMIN_BASE}/settings`]: 'site-settings'
 };
 
 // Ссылка редактирования конкретного поста: /admin/posts/edit/{id} — при
 // открытии такого адреса напрямую (например, по сохранённой ссылке) должна
 // открыться панель со страницей «Новый пост», заполненной этим постом.
-const EDIT_URL_RE = /^\/admin\/posts\/edit\/([^/]+)\/?$/;
+const EDIT_URL_RE = new RegExp(`^${ADMIN_BASE}/posts/edit/([^/]+)/?$`);
 
 // Ссылка просмотра поста: /admin/posts/{id} — открывает окно предпросмотра
 // поверх списка постов. Открывается кликом по строке поста в таблице, а также
 // напрямую по сохранённой/скопированной ссылке.
-const VIEW_URL_RE = /^\/admin\/posts\/([^/]+)\/?$/;
+const VIEW_URL_RE = new RegExp(`^${ADMIN_BASE}/posts/([^/]+)/?$`);
 
 function postIdFromUrl() {
   const m = window.location.pathname.match(EDIT_URL_RE);
@@ -613,11 +643,11 @@ function postIdFromViewUrl() {
 }
 
 function editUrlForPost(id) {
-  return `/admin/posts/edit/${encodeURIComponent(id)}`;
+  return `${ADMIN_BASE}/posts/edit/${encodeURIComponent(id)}`;
 }
 
 function viewUrlForPost(id) {
-  return `/admin/posts/${encodeURIComponent(id)}`;
+  return `${ADMIN_BASE}/posts/${encodeURIComponent(id)}`;
 }
 
 function pageFromUrl() {
@@ -644,7 +674,7 @@ function goToPage(page, { updateUrl = true, url } = {}) {
   dashTopbarTitle.textContent = pageLabels[page] || 'Панель управления';
 
   if (updateUrl) {
-    const target = url || PAGE_TO_URL[page] || '/admin/posts';
+    const target = url || PAGE_TO_URL[page] || `${ADMIN_BASE}/posts`;
     if (window.location.pathname !== target) {
       window.history.pushState({ page }, '', target);
     }
@@ -697,7 +727,7 @@ async function checkAuth() {
   if (data.isAdmin) {
     showAdmin();
   } else {
-    window.location.href = '/admin/auth';
+    window.location.href = `${ADMIN_BASE}/login`;
   }
 }
 
@@ -722,7 +752,7 @@ function showAdmin() {
 
 logoutBtn.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/admin/auth';
+  window.location.href = `${ADMIN_BASE}/login`;
 });
 
 // ===== Список постов =====
@@ -1143,7 +1173,7 @@ function closePreviewModal() {
   previewModal.hidden = true;
   // Если окно было открыто по ссылке просмотра поста — возвращаемся на список.
   if (VIEW_URL_RE.test(window.location.pathname)) {
-    window.history.pushState({}, '', '/admin/posts');
+    window.history.pushState({}, '', `${ADMIN_BASE}/posts`);
   }
 }
 

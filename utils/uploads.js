@@ -4,6 +4,7 @@
 // Раньше это было продублировано в трёх роутерах — с разными проверками.
 const crypto = require('crypto');
 const fs = require('fs');
+const fsp = require('fs/promises');
 const path = require('path');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -60,6 +61,53 @@ function fontFileFilter(req, file, cb) {
     return cb(badRequest(`Разрешены только файлы шрифтов: ${FONT_EXTENSIONS.join(', ')}`));
   }
   cb(null, true);
+}
+
+async function fileHasExpectedSignature(file, kind) {
+  const handle = await fsp.open(file.path, 'r');
+  try {
+    const buffer = Buffer.alloc(32);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    const head = buffer.subarray(0, bytesRead);
+    const ext = path.extname(String(file.originalname || '')).toLowerCase();
+    if (kind === 'image') {
+      if (ext === '.jpg' || ext === '.jpeg') return head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+      if (ext === '.png') return head.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      if (ext === '.gif') return head.subarray(0, 6).toString('ascii').match(/^GIF8[79]a$/) !== null;
+      if (ext === '.webp') return head.subarray(0, 4).toString('ascii') === 'RIFF' && head.subarray(8, 12).toString('ascii') === 'WEBP';
+      if (ext === '.avif') return head.subarray(4, 8).toString('ascii') === 'ftyp' && head.subarray(8, 32).includes(Buffer.from('avif'));
+      return false;
+    }
+    if (kind === 'font') {
+      const tag = head.subarray(0, 4).toString('ascii');
+      return tag === 'OTTO' || tag === 'wOFF' || tag === 'wOF2' || head.subarray(0, 4).equals(Buffer.from([0, 1, 0, 0]));
+    }
+    return false;
+  } finally {
+    await handle.close();
+  }
+}
+
+function validateUploadedFiles(kind) {
+  return async (req, res, next) => {
+    const files = Array.isArray(req.files)
+      ? req.files
+      : req.file
+        ? [req.file]
+        : Object.values(req.files || {}).flat();
+    try {
+      for (const file of files) {
+        if (!(await fileHasExpectedSignature(file, kind))) {
+          await Promise.all(files.map((item) => fsp.unlink(item.path).catch(() => {})));
+          return res.status(400).json({ error: kind === 'font' ? 'Содержимое не является файлом шрифта' : 'Содержимое не соответствует формату изображения' });
+        }
+      }
+      next();
+    } catch (err) {
+      await Promise.all(files.map((item) => fsp.unlink(item.path).catch(() => {})));
+      next(err);
+    }
+  };
 }
 
 // Хранилище multer для картинок и для шрифтов — с безопасным именем файла.
@@ -129,6 +177,7 @@ module.exports = {
   makeUploadFilename,
   imageFileFilter,
   fontFileFilter,
+  validateUploadedFiles,
   imageStorage,
   fontStorage,
   resolveUploadPath,

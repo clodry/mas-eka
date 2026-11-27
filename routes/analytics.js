@@ -3,8 +3,14 @@ const express = require('express');
 const { get, incrementAnalyticsCounter, getAnalyticsSummary } = require('../db/database');
 const requireAuth = require('../middleware/requireAuth');
 const asyncHandler = require('../utils/asyncHandler');
+const createRateLimit = require('../middleware/rateLimit');
 
 const router = express.Router();
+const viewRateLimit = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  message: 'Слишком много запросов статистики. Попробуйте позже.'
+});
 
 // Эндпоинт открыт для всех (его вызывает обычный посетитель блога), поэтому
 // на него нужен потолок: каждый вызов дописывает строку в базу, и без
@@ -15,7 +21,7 @@ const router = express.Router();
 // POST /api/analytics/view — засчитать просмотр поста при переходе внутри
 // блога без перезагрузки страницы (SPA-переход по клику на карточку).
 // Прямые заходы на /blog/:slug уже считаются на сервере при рендере страницы.
-router.post('/view', asyncHandler(async (req, res) => {
+router.post('/view', viewRateLimit, asyncHandler(async (req, res) => {
   const slug = typeof req.body.slug === 'string' ? req.body.slug.trim() : '';
   if (!slug) return res.status(400).json({ error: 'Не передан slug поста' });
 

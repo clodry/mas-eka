@@ -5,6 +5,9 @@ node_modules/
 # В репозитории лежит только шаблон .env.example без секретов.
 .env
 .env.local
+.env.*
+!.env.example
+!.env.production.example
 
 # Логи
 *.log

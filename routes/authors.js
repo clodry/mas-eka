@@ -5,7 +5,7 @@ const { all, get, run, generateUniqueAuthorId } = require('../db/database');
 const requireAuth = require('../middleware/requireAuth');
 const asyncHandler = require('../utils/asyncHandler');
 const slugify = require('../utils/slugify');
-const { ensureUploadDirs, imageStorage, imageFileFilter, removeUploadedFile } = require('../utils/uploads');
+const { ensureUploadDirs, imageStorage, imageFileFilter, validateUploadedFiles, removeUploadedFile } = require('../utils/uploads');
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ ensureUploadDirs();
 
 const upload = multer({
   storage: multer.diskStorage(imageStorage()),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 20, fieldSize: 32 * 1024, parts: 22 },
   fileFilter: imageFileFilter
 });
 
@@ -34,7 +34,7 @@ function serializeAuthor(row, postCount) {
 }
 
 async function resolveSlug({ name, requestedSlug, isTaken }) {
-  const custom = String(requestedSlug || '').trim();
+  const custom = String(requestedSlug || '').trim().slice(0, 120);
   return slugify(custom || name, isTaken);
 }
 
@@ -87,9 +87,10 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/authors — добавить автора (только админ)
-router.post('/', requireAuth, upload.single('photo'), asyncHandler(async (req, res) => {
+router.post('/', requireAuth, upload.single('photo'), validateUploadedFiles('image'), asyncHandler(async (req, res) => {
   const name = String(req.body.name || '').trim();
   if (!name) return res.status(400).json({ error: 'Укажите имя автора' });
+  if (name.length > 160) return res.status(400).json({ error: 'Имя автора слишком длинное' });
 
   const role = String(req.body.role || '').trim().slice(0, 120);
   const bio = String(req.body.bio || '').trim().slice(0, 600);
@@ -112,11 +113,12 @@ router.post('/', requireAuth, upload.single('photo'), asyncHandler(async (req, r
 }));
 
 // PUT /api/authors/:id — редактировать автора (только админ)
-router.put('/:id', requireAuth, upload.single('photo'), asyncHandler(async (req, res) => {
+router.put('/:id', requireAuth, upload.single('photo'), validateUploadedFiles('image'), asyncHandler(async (req, res) => {
   const existing = await get('SELECT * FROM authors WHERE id = ?', req.params.id);
   if (!existing) return res.status(404).json({ error: 'Автор не найден' });
 
   const name = String(req.body.name || '').trim() || existing.name;
+  if (name.length > 160) return res.status(400).json({ error: 'Имя автора слишком длинное' });
   const role = req.body.role !== undefined ? String(req.body.role).trim().slice(0, 120) : existing.role;
   const bio = req.body.bio !== undefined ? String(req.body.bio).trim().slice(0, 600) : existing.bio;
   const socialUrl =

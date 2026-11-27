@@ -7,10 +7,10 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // Cookie помечаются Secure (передаются только по HTTPS) автоматически в
 // продакшене. Явный COOKIE_SECURE=true/false перекрывает это поведение —
-// например, если прод временно поднят по http или локальная разработка,
-// наоборот, идёт через https-прокси.
-const COOKIE_SECURE =
-  process.env.COOKIE_SECURE !== undefined ? process.env.COOKIE_SECURE === 'true' : IS_PRODUCTION;
+// В разработке его можно включить отдельно для проверки HTTPS-прокси.
+// В продакшене Secure нельзя отключить настройкой: сессионная cookie должна
+// передаваться только по HTTPS.
+const COOKIE_SECURE = IS_PRODUCTION || process.env.COOKIE_SECURE === 'true';
 
 const SESSION_COOKIE_NAME = 'eka.sid';
 

@@ -1,12 +1,13 @@
 require('dotenv').config();
 
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 
-const { initDb, incrementAnalyticsCounter } = require('./db/database');
+const { initDb, incrementAnalyticsCounter, pool } = require('./db/database');
 const authRouter = require('./routes/auth');
 const postsRouter = require('./routes/posts');
 const authorsRouter = require('./routes/authors');
@@ -17,6 +18,9 @@ const analyticsRouter = require('./routes/analytics');
 const verifyOrigin = require('./middleware/verifyOrigin');
 const { isTrackablePagePath } = require('./utils/analytics');
 const { IS_PRODUCTION, COOKIE_SECURE, SESSION_COOKIE_NAME } = require('./utils/config');
+const { getAllowedOrigins } = require('./utils/originAllowlist');
+
+const PgSession = require('connect-pg-simple')(session);
 
 // ===== Проверка обязательных секретов при старте =====
 // Раньше при отсутствии SESSION_SECRET подставлялась строка-заглушка прямо из
@@ -44,6 +48,7 @@ function resolveSessionSecret() {
 }
 
 const SESSION_SECRET = resolveSessionSecret();
+const ADMIN_BASE = `/manage-${crypto.createHmac('sha256', SESSION_SECRET).update('eka-admin-route-v1').digest('hex').slice(0, 32)}`;
 
 if (!process.env.ADMIN_PASSWORD_HASH) {
   const message =
@@ -60,15 +65,49 @@ const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+if (IS_PRODUCTION) delete process.env.DEBUG;
 
-// ===== Базовые защитные заголовки =====
+// Защитные заголовки и nonce для строгой CSP. HTML-рендереры добавляют nonce
+// только inline JSON-LD/скриптам, остальной JavaScript загружается с origin сайта.
 app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(18).toString('base64');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader(
+    'Content-Security-Policy',
+    `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; ` +
+      `script-src 'self' 'nonce-${res.locals.cspNonce}'; style-src 'self' 'unsafe-inline'; ` +
+      `img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; upgrade-insecure-requests`
+  );
   if (COOKIE_SECURE) {
-    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// CORS закрыт по умолчанию и разрешает только явно заданные origin сайта.
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (origin) {
+    let normalizedOrigin;
+    try { normalizedOrigin = new URL(origin).origin; } catch (e) { normalizedOrigin = null; }
+    if (!normalizedOrigin || !getAllowedOrigins().has(normalizedOrigin)) {
+      return res.status(403).json({ error: 'Запрос с этого домена запрещён' });
+    }
+    res.setHeader('Access-Control-Allow-Origin', normalizedOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.vary('Origin');
+  }
+  if (req.method === 'OPTIONS') {
+    if (!origin) return res.sendStatus(204);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+    res.setHeader('Access-Control-Max-Age', '600');
+    return res.sendStatus(204);
   }
   next();
 });
@@ -80,6 +119,7 @@ app.use(
   session({
     name: SESSION_COOKIE_NAME,
     secret: SESSION_SECRET,
+    store: new PgSession({ pool, tableName: 'eka_sessions', createTableIfMissing: true, pruneSessionInterval: 15 * 60 }),
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -107,7 +147,7 @@ app.use((req, res, next) => {
     const delivered = (res.statusCode >= 200 && res.statusCode < 300) || res.statusCode === 304;
     if (!delivered) return;
     incrementAnalyticsCounter({ kind: 'visit' }).catch((e) => {
-      console.error('analytics track error:', e.message);
+      console.error(IS_PRODUCTION ? 'Ошибка обновления статистики посещений.' : `analytics track error: ${e.message}`);
     });
   });
 
@@ -116,7 +156,7 @@ app.use((req, res, next) => {
 
 app.use(seoRouter);
 
-// Красивые адреса админ-панели: /admin, /admin/newpost, /admin/posts, /admin/settings.
+// Адрес панели зависит от серверного SESSION_SECRET; публичный /admin всегда 404.
 // Все они отдают одну и ту же страницу (views/admin.html), а нужный раздел
 // открывается на стороне браузера скриптом admin.js по адресу страницы.
 //
@@ -130,19 +170,40 @@ function isAdminSession(req) {
   return !!(req.session && req.session.isAdmin);
 }
 
-app.get('/admin/auth', (req, res) => {
+function sendAdminHtml(req, res, filename, next) {
+  fs.readFile(path.join(__dirname, 'views', filename), 'utf8', (err, html) => {
+    if (err) return next(err);
+    const rendered = html.replace('__ADMIN_BASE__', ADMIN_BASE);
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('html').send(rendered);
+  });
+}
+
+app.get(`${ADMIN_BASE}/login`, (req, res, next) => {
   if (isAdminSession(req)) {
-    return res.redirect('/admin/posts');
+    return res.redirect(`${ADMIN_BASE}/posts`);
   }
-  res.sendFile(path.join(__dirname, 'views', 'admin-login.html'));
+  sendAdminHtml(req, res, 'admin-login.html', next);
 });
 
-app.get(['/admin', '/admin/newpost', '/admin/posts', '/admin/authors', '/admin/portfolio', '/admin/settings', '/admin/posts/edit/:id', '/admin/posts/:id'], (req, res) => {
+app.get([
+  ADMIN_BASE,
+  `${ADMIN_BASE}/`,
+  `${ADMIN_BASE}/newpost`,
+  `${ADMIN_BASE}/posts`,
+  `${ADMIN_BASE}/authors`,
+  `${ADMIN_BASE}/portfolio`,
+  `${ADMIN_BASE}/settings`,
+  `${ADMIN_BASE}/posts/edit/:id`,
+  `${ADMIN_BASE}/posts/:id`
+], (req, res, next) => {
   if (!isAdminSession(req)) {
-    return res.redirect('/admin/auth');
+    return res.redirect(`${ADMIN_BASE}/login`);
   }
-  res.sendFile(path.join(__dirname, 'views', 'admin.html'));
+  sendAdminHtml(req, res, 'admin.html', next);
 });
+
+app.get(['/admin', '/admin/*'], (req, res) => res.status(404).sendFile(path.join(__dirname, 'public', '404.html')));
 
 // Скрипт и стили панели тоже отдаём только по сессии — иначе устройство
 // админки читается кем угодно прямо из статики. Файлы страницы входа
@@ -180,7 +241,11 @@ const MULTER_MESSAGES = {
 app.use((err, req, res, next) => {
   if (!err) return next();
 
-  console.error(`Ошибка ${req.method} ${req.originalUrl}:`, err.stack || err.message);
+  if (IS_PRODUCTION) {
+    console.error(`Ошибка ${req.method} ${req.path}: ${Number(err.status || err.statusCode) || 500}`);
+  } else {
+    console.error(`Ошибка ${req.method} ${req.originalUrl}:`, err.stack || err.message);
+  }
 
   if (err instanceof multer.MulterError) {
     return res.status(400).json({ error: MULTER_MESSAGES[err.code] || 'Не удалось загрузить файл' });
@@ -216,6 +281,10 @@ initDb()
     });
   })
   .catch((err) => {
-    console.error('Не удалось подключиться к Postgres / создать схему:', err.message);
+    console.error(
+      IS_PRODUCTION
+        ? 'Не удалось подключиться к Postgres / создать схему.'
+        : `Не удалось подключиться к Postgres / создать схему: ${err.message}`
+    );
     process.exit(1);
   });

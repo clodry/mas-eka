@@ -27,7 +27,8 @@ loginForm.addEventListener('submit', async (e) => {
     }
     // Успех: сессия установлена сервером, переходим в саму панель —
     // её разметку и скрипт браузер загрузит только теперь, уже авторизованным.
-    window.location.href = '/admin/posts';
+    const adminBase = window.location.pathname.replace(/\/login\/?$/, '');
+    window.location.href = `${adminBase}/posts`;
   } catch (err) {
     loginError.textContent = 'Ошибка соединения с сервером';
     loginError.hidden = false;

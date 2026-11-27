@@ -5,6 +5,7 @@ const path = require('path');
 const { all, get, getSiteContent, incrementAnalyticsCounter, effectivePostStatus } = require('../db/database');
 const { getSiteUrl, absoluteUrl } = require('../utils/siteUrl');
 const asyncHandler = require('../utils/asyncHandler');
+const { IS_PRODUCTION } = require('../utils/config');
 
 const router = express.Router();
 
@@ -33,6 +34,11 @@ function stripHtml(html) {
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function jsonLdForHtml(value) {
+  // Не позволяем данным закрыть script-блок через текстовое значение.
+  return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
 function formatDateRu(iso) {
@@ -129,7 +135,8 @@ function renderStaticTemplate(req, res, filePath, extraTokens) {
   const replaced = html.replace(/\{\{(\w+)\}\}/g, (match, key) =>
     Object.prototype.hasOwnProperty.call(tokens, key) ? tokens[key] : match
   );
-  res.type('html').send(replaced);
+  const nonceMarkup = replaced.replace(/<script(?![^>]*\bsrc=)([^>]*)>/gi, (tag, attrs) => `<script nonce="${res.locals.cspNonce}"${attrs}>`);
+  res.type('html').send(nonceMarkup);
 }
 
 function renderStatsHtml(stats) {
@@ -393,7 +400,7 @@ router.get('/blog/:slug', asyncHandler(async (req, res) => {
   try {
     await incrementAnalyticsCounter({ kind: 'post_view', postId: row.id });
   } catch (e) {
-    console.error('analytics track error:', e.message);
+    console.error(IS_PRODUCTION ? 'Ошибка обновления статистики просмотров.' : `analytics track error: ${e.message}`);
   }
 
   const content = await getSiteContent();
@@ -478,7 +485,7 @@ ${verificationMetaHtml}
 ${analyticsHeadHtml}
 <style>${inlineStyles}</style>
 ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
-<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+<script nonce="${res.locals.cspNonce}" type="application/ld+json">${jsonLdForHtml(jsonLd)}</script>
 </head>
 <body>
 
@@ -624,7 +631,7 @@ router.get('/portfolio/:slug', asyncHandler(async (req, res) => {
 ${verificationMetaHtml}
 ${analyticsHeadHtml}
 <style>${inlineStyles}</style>
-<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+<script nonce="${res.locals.cspNonce}" type="application/ld+json">${jsonLdForHtml(jsonLd)}</script>
 </head>
 <body>
 
@@ -786,7 +793,7 @@ router.get('/author/:slug', asyncHandler(async (req, res) => {
 ${verificationMetaHtml}
 ${analyticsHeadHtml}
 <style>${inlineStyles}</style>
-<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+<script nonce="${res.locals.cspNonce}" type="application/ld+json">${jsonLdForHtml(jsonLd)}</script>
 </head>
 <body>
 

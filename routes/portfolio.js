@@ -5,7 +5,7 @@ const { all, get, run, generateUniqueProjectId } = require('../db/database');
 const requireAuth = require('../middleware/requireAuth');
 const asyncHandler = require('../utils/asyncHandler');
 const slugify = require('../utils/slugify');
-const { ensureUploadDirs, imageStorage, imageFileFilter, removeUploadedFile } = require('../utils/uploads');
+const { ensureUploadDirs, imageStorage, imageFileFilter, validateUploadedFiles, removeUploadedFile } = require('../utils/uploads');
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ ensureUploadDirs();
 // cover — одно фото-обложка, gallery — до 20 дополнительных фото проекта.
 const upload = multer({
   storage: multer.diskStorage(imageStorage()),
-  limits: { fileSize: 5 * 1024 * 1024, files: 21 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 21, fields: 50, fieldSize: 256 * 1024, parts: 72 },
   fileFilter: imageFileFilter
 });
 const uploadFields = upload.fields([
@@ -74,7 +74,7 @@ function parseKeptGallery(raw) {
 }
 
 function resolveSlug({ title, requestedSlug, isTaken }) {
-  const custom = String(requestedSlug || '').trim();
+  const custom = String(requestedSlug || '').trim().slice(0, 120);
   return slugify(custom || title, isTaken);
 }
 
@@ -157,9 +157,12 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/portfolio — создать проект (только админ)
-router.post('/', requireAuth, uploadFields, asyncHandler(async (req, res) => {
+router.post('/', requireAuth, uploadFields, validateUploadedFiles('image'), asyncHandler(async (req, res) => {
   const title = String(req.body.title || '').trim();
   const excerpt = String(req.body.excerpt || '').trim();
+  if (title.length > 200 || excerpt.length > 600 || String(req.body.description || '').length > 40000) {
+    return res.status(400).json({ error: 'Проверьте длину заголовка, анонса и описания проекта' });
+  }
   if (!title || !excerpt) {
     return res.status(400).json({ error: 'Заполните название и краткое описание проекта' });
   }
@@ -202,7 +205,7 @@ router.post('/', requireAuth, uploadFields, asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/portfolio/:id — редактировать проект (только админ)
-router.put('/:id', requireAuth, uploadFields, asyncHandler(async (req, res) => {
+router.put('/:id', requireAuth, uploadFields, validateUploadedFiles('image'), asyncHandler(async (req, res) => {
   const existing = await get('SELECT * FROM portfolio_projects WHERE id = ?', req.params.id);
   if (!existing) return res.status(404).json({ error: 'Проект не найден' });
 
@@ -233,6 +236,10 @@ router.put('/:id', requireAuth, uploadFields, asyncHandler(async (req, res) => {
 
   const title = String(req.body.title || '').trim() || existing.title;
   const excerpt = String(req.body.excerpt || '').trim() || existing.excerpt;
+  const description = req.body.description === undefined ? String(existing.description || '') : String(req.body.description);
+  if (title.length > 200 || excerpt.length > 600 || description.length > 40000) {
+    return res.status(400).json({ error: 'Проверьте длину заголовка, анонса и описания проекта' });
+  }
   const status = PROJECT_STATUSES.includes(req.body.status) ? req.body.status : existing.status;
   const tags = req.body.tags !== undefined ? parseTags(req.body.tags) : JSON.parse(existing.tags || '[]');
 
@@ -248,7 +255,7 @@ router.put('/:id', requireAuth, uploadFields, asyncHandler(async (req, res) => {
        tags = ?, cover_image = ?, gallery = ?, seo_title = ?, seo_description = ?, h1 = ?, status = ?, updated_at = ?
      WHERE id = ?`,
     title, slug, excerpt,
-    req.body.description !== undefined ? String(req.body.description).trim() : existing.description,
+    description.trim(),
     req.body.category !== undefined ? String(req.body.category).trim().slice(0, 80) : existing.category,
     req.body.location !== undefined ? String(req.body.location).trim().slice(0, 120) : existing.location,
     req.body.year !== undefined ? String(req.body.year).trim().slice(0, 20) : existing.year,

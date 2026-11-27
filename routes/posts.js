@@ -13,6 +13,7 @@ const {
   imageFileFilter,
   fontStorage,
   fontFileFilter,
+  validateUploadedFiles,
   isSafeUploadRef,
   removeUploadedFile
 } = require('../utils/uploads');
@@ -86,14 +87,14 @@ ensureUploadDirs();
 
 const upload = multer({
   storage: multer.diskStorage(imageStorage()),
-  limits: { fileSize: 5 * 1024 * 1024, files: 30 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 30, fields: 100, fieldSize: 256 * 1024, parts: 140 },
   fileFilter: imageFileFilter
 });
 
 // ===== Загрузка пользовательских шрифтов для rich-text редактора =====
 const uploadFont = multer({
   storage: multer.diskStorage(fontStorage()),
-  limits: { fileSize: 4 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 4 * 1024 * 1024, files: 1, fields: 20, fieldSize: 256 * 1024, parts: 22 },
   fileFilter: fontFileFilter
 });
 
@@ -253,7 +254,7 @@ function buildSeoFields(body) {
 }
 
 async function resolveSlug({ title, requestedSlug, isTaken }) {
-  const custom = String(requestedSlug || '').trim();
+  const custom = String(requestedSlug || '').trim().slice(0, 120);
   return slugify(custom || title, isTaken);
 }
 
@@ -329,7 +330,7 @@ function resolvePreviewImage({ files, body, idToSrc, finalBlocks }) {
 // используется rich-text редактором статьи. Возвращает сгенерированное
 // имя font-family и адрес файла — их подставляет клиент в inline-стиль
 // выделенного текста и передаёт со списком шрифтов при сохранении поста.
-router.post('/upload-font', requireAuth, uploadFont.single('font'), (req, res) => {
+router.post('/upload-font', requireAuth, uploadFont.single('font'), validateUploadedFiles('font'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл шрифта не получен' });
   const family = makeFontFamilyName(req.file.originalname);
   res.json({
@@ -397,10 +398,13 @@ router.get('/:slug', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/posts — создать пост (только админ)
-router.post('/', requireAuth, upload.any(), asyncHandler(async (req, res) => {
+router.post('/', requireAuth, upload.any(), validateUploadedFiles('image'), asyncHandler(async (req, res) => {
   const isDraftAutosave = req.body.status === 'draft' && req.body.autosave === '1';
   const title = String(req.body.title || '').trim();
   const excerpt = String(req.body.excerpt || '').trim();
+  if (title.length > 200 || excerpt.length > 600) {
+    return res.status(400).json({ error: 'Проверьте длину заголовка и анонса (максимум 200 и 600 символов)' });
+  }
 
   if (!isDraftAutosave && (!title || !excerpt)) {
     return res.status(400).json({ error: 'Заполните заголовок и анонс поста' });
@@ -444,13 +448,16 @@ router.post('/', requireAuth, upload.any(), asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/posts/:id — редактировать пост (только админ)
-router.put('/:id', requireAuth, upload.any(), asyncHandler(async (req, res) => {
+router.put('/:id', requireAuth, upload.any(), validateUploadedFiles('image'), asyncHandler(async (req, res) => {
   const existing = await get('SELECT * FROM posts WHERE id = ?', req.params.id);
   if (!existing) return res.status(404).json({ error: 'Пост не найден' });
 
   const isDraftAutosave = req.body.status === 'draft' && req.body.autosave === '1';
   const title = String(req.body.title || '').trim();
   const excerpt = String(req.body.excerpt || '').trim();
+  if (title.length > 200 || excerpt.length > 600) {
+    return res.status(400).json({ error: 'Проверьте длину заголовка и анонса (максимум 200 и 600 символов)' });
+  }
   if (!isDraftAutosave && (!title && !existing.title || !excerpt && !existing.excerpt)) {
     return res.status(400).json({ error: 'Заполните заголовок и анонс поста' });
   }
