@@ -389,7 +389,7 @@ h2.section-title {
 }
 .about-section-head .section-title {
   max-width: 17ch;
-  font-size: clamp(42px, 5.8vw, 76px);
+  font-size: clamp(38px, 5.2vw, 68px);
   font-weight: 800;
   margin-bottom: 56px;
 }
