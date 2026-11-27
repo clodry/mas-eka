@@ -5,7 +5,7 @@ require('dotenv').config();
 
 // Безопасный режим по умолчанию — production. Локальная разработка явно
 // включается через NODE_ENV=development в .env.example.
-const IS_PRODUCTION = process.env.NODE_ENV !== 'development';
+const IS_PRODUCTION = process.env.NODE_ENV !== 'development' || Boolean(process.env.RAILWAY_PUBLIC_DOMAIN);
 
 // Cookie помечаются Secure (передаются только по HTTPS) автоматически в
 // продакшене. Явный COOKIE_SECURE=true/false перекрывает это поведение —

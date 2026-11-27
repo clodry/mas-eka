@@ -500,9 +500,9 @@ ${fontFacesCss ? `<style>${fontFacesCss}</style>` : ''}
     </button>
     <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
+      <a href="/#about">О нас</a>
       <a href="/portfolio">Портфолио</a>
       <a href="/blog">Блог</a>
-      <a href="/#about">О нас</a>
     </nav>
   </div>
 </header>
@@ -646,9 +646,9 @@ ${analyticsHeadHtml}
     </button>
     <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
+      <a href="/#about">О нас</a>
       <a href="/portfolio">Портфолио</a>
       <a href="/blog">Блог</a>
-      <a href="/#about">О нас</a>
     </nav>
   </div>
 </header>
@@ -808,9 +808,9 @@ ${analyticsHeadHtml}
     </button>
     <nav class="nav-links" id="primary-navigation" aria-label="Основная навигация">
       <a href="/">Главная</a>
+      <a href="/#about">О нас</a>
       <a href="/portfolio">Портфолио</a>
       <a href="/blog">Блог</a>
-      <a href="/#about">О нас</a>
     </nav>
   </div>
 </header>
